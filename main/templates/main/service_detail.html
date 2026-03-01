@@ -1,0 +1,387 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ service.seo_title|default:service.name }} | NCSL</title>
+    
+    {% block meta %}
+    <meta name="description" content="{{ service.seo_description }}">
+    <meta property="og:title" content="{{ service.seo_title }}">
+    <meta property="og:description" content="{{ service.seo_description }}">
+    {% if service.seo_image %}
+    <meta property="og:image" content="{{ service.seo_image.url }}">
+    {% endif %}
+    {% endblock %}
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;600;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'display': ['Raleway', 'sans-serif'],
+                        'body': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: '#03c4eb',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/css">
+        body { 
+            font-family: 'Inter', sans-serif;
+            font-size: 18px;
+            line-height: 1.8;
+        }
+        h1, h2, h3, h4 { font-family: 'Raleway', sans-serif; }
+        
+        /* Reading progress bar */
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(to right, #03c4eb, #06d6ff);
+            width: 0%;
+            z-index: 100;
+            transition: width 0.1s ease;
+        }
+        
+        /* Smooth reading experience */
+        .article-content p {
+            margin-bottom: 1.5em;
+        }
+        
+        .article-content h2 {
+            margin-top: 2.5em;
+            margin-bottom: 1em;
+        }
+        
+        .article-content h3 {
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-800">
+
+    <!-- Reading Progress Bar -->
+    <div id="progress-bar"></div>
+
+    <!-- Minimal Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2 group">
+                <img src="https://nucleiglobal.com/wp-content/uploads/2023/05/cropped-NCSL.jpg" class="h-7 rounded-full">
+                <span class="font-display font-bold text-lg">NCSL</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-8 text-sm text-slate-600">
+                <a href="/#services" class="hover:text-brand transition">Services</a>
+                <a href="/#about" class="hover:text-brand transition">About</a>
+                <a href="/#contact" class="px-5 py-2 bg-brand text-white rounded-md font-semibold hover:bg-cyan-500 transition">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Article Header -->
+    <article class="pt-24">
+        
+        <!-- Breadcrumb -->
+        <div class="max-w-3xl mx-auto px-6 mb-8">
+            <nav class="flex items-center gap-2 text-sm text-slate-500">
+                <a href="/" class="hover:text-brand">Home</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <a href="/#services" class="hover:text-brand">Services</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span class="text-slate-700">{{ service.name }}</span>
+            </nav>
+        </div>
+
+        <!-- Title & Meta -->
+        <header class="max-w-3xl mx-auto px-6 mb-12">
+            
+            <!-- Category Badge -->
+            <div class="mb-6">
+                <span class="inline-flex items-center gap-2 px-4 py-2 bg-brand/10 text-brand rounded-full text-sm font-semibold">
+                    <i class="fas {{ service.icon|default:'fa-cog' }}"></i>
+                    Professional Service
+                </span>
+            </div>
+
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+                {{ service.name }}
+            </h1>
+            
+            {% if service.seo_description %}
+            <p class="text-xl md:text-2xl text-slate-600 font-light leading-relaxed">
+                {{ service.seo_description }}
+            </p>
+            {% endif %}
+            
+            <!-- Meta Info -->
+            <div class="flex flex-wrap items-center gap-6 mt-8 pt-6 border-t border-slate-200 text-sm text-slate-500">
+                <div class="flex items-center gap-2">
+                    <i class="far fa-clock"></i>
+                    <span>5 min read</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="far fa-calendar"></i>
+                    <span>Last updated: Jan 2024</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-tag"></i>
+                    <span>Security Solutions</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Featured Image -->
+        {% if service.seo_image %}
+        <div class="max-w-5xl mx-auto px-6 mb-16">
+            <figure class="rounded-xl overflow-hidden shadow-2xl">
+                <img src="{{ service.seo_image.url }}" 
+                     alt="{{ service.name }}" 
+                     class="w-full h-auto">
+            </figure>
+        </div>
+        {% endif %}
+
+        <!-- Additional Images (Blog Style) -->
+        {% if service.images.all %}
+        <div class="max-w-5xl mx-auto px-6 mb-16">
+            <div class="grid md:grid-cols-2 gap-6">
+                {% for img in service.images.all %}
+                <figure class="group">
+                    <div class="overflow-hidden rounded-xl shadow-lg">
+                        <img src="{{ img.image.url }}" 
+                             alt="{{ img.caption }}" 
+                             class="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    {% if img.caption %}
+                    <figcaption class="mt-3 text-sm text-slate-500 text-center italic">{{ img.caption }}</figcaption>
+                    {% endif %}
+                </figure>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <div class="max-w-3xl mx-auto px-6 mb-20">
+            
+            <!-- Article Body -->
+            <div class="article-content prose prose-lg max-w-none
+                        prose-headings:font-display prose-headings:font-bold prose-headings:text-slate-900
+                        prose-h2:text-3xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-3
+                        prose-h3:text-2xl prose-h3:text-slate-800
+                        prose-p:text-slate-700 prose-p:leading-relaxed
+                        prose-a:text-brand prose-a:font-semibold prose-a:no-underline hover:prose-a:underline
+                        prose-strong:text-slate-900 prose-strong:font-semibold
+                        prose-ul:space-y-3 prose-ol:space-y-3
+                        prose-li:text-slate-700
+                        prose-blockquote:border-l-4 prose-blockquote:border-brand prose-blockquote:bg-slate-50 
+                        prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-lg prose-blockquote:not-italic
+                        prose-img:rounded-lg prose-img:shadow-lg
+                        prose-code:text-brand prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-base prose-code:font-normal
+                        prose-pre:bg-slate-900 prose-pre:text-slate-100">
+                
+                {{ service.content|safe }}
+                
+            </div>
+
+        </div>
+
+        <!-- Key Highlights Box -->
+        <div class="max-w-3xl mx-auto px-6 mb-20">
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 md:p-12 text-white">
+                <h3 class="font-display text-2xl font-bold mb-6">Why This Service Matters</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-brand"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Enterprise Grade</h4>
+                            <p class="text-white/70 text-sm">Professional solutions for businesses</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-brand"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Proven Results</h4>
+                            <p class="text-white/70 text-sm">Trusted by 500+ clients worldwide</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-brand"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-1">24/7 Support</h4>
+                            <p class="text-white/70 text-sm">Always here when you need us</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-brand"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-1">Custom Solutions</h4>
+                            <p class="text-white/70 text-sm">Tailored to your specific needs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="max-w-3xl mx-auto px-6 mb-20">
+            <div class="bg-slate-50 rounded-2xl p-8 md:p-12 text-center border border-slate-200">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-brand/10 rounded-full mb-6">
+                    <i class="fas fa-rocket text-brand text-2xl"></i>
+                </div>
+                <h3 class="font-display text-3xl font-bold text-slate-900 mb-4">
+                    Ready to Get Started?
+                </h3>
+                <p class="text-lg text-slate-600 mb-8 max-w-xl mx-auto">
+                    Let's discuss how {{ service.name|lower }} can transform your business operations and enhance security.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="/#contact" class="px-8 py-4 bg-brand text-white rounded-lg font-semibold hover:bg-cyan-500 transition shadow-lg">
+                        Schedule a Consultation
+                    </a>
+                    <a href="tel:+1234567890" class="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-lg font-semibold hover:border-brand hover:text-brand transition">
+                        Call Us: (123) 456-7890
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Share Section -->
+        <div class="max-w-3xl mx-auto px-6 mb-12">
+            <div class="flex items-center justify-between py-6 border-y border-slate-200">
+                <span class="text-sm font-semibold text-slate-700">Share this article:</span>
+                <div class="flex gap-3">
+                    <a href="#" class="w-10 h-10 bg-slate-100 hover:bg-brand hover:text-white rounded-full flex items-center justify-center transition">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-slate-100 hover:bg-brand hover:text-white rounded-full flex items-center justify-center transition">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-slate-100 hover:bg-brand hover:text-white rounded-full flex items-center justify-center transition">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-slate-100 hover:bg-brand hover:text-white rounded-full flex items-center justify-center transition">
+                        <i class="fas fa-envelope"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </article>
+
+    <!-- Related Services -->
+    <section class="py-16 bg-slate-50 border-t border-slate-200">
+        <div class="max-w-5xl mx-auto px-6">
+            <h2 class="font-display text-3xl font-bold text-slate-900 mb-8">Related Services</h2>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                {% for related in related_services|slice:":3" %}
+                <a href="{% url 'service_detail' related.slug %}" 
+                   class="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all border border-slate-200 hover:border-brand">
+                    {% if related.seo_image %}
+                    <img src="{{ related.seo_image.url }}" alt="{{ related.name }}" class="w-full h-40 object-cover">
+                    {% else %}
+                    <div class="w-full h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                        <i class="fas {{ related.icon|default:'fa-cog' }} text-4xl text-slate-300"></i>
+                    </div>
+                    {% endif %}
+                    <div class="p-6">
+                        <h3 class="font-display font-bold text-lg text-slate-900 mb-2 group-hover:text-brand transition">
+                            {{ related.name }}
+                        </h3>
+                        <p class="text-sm text-slate-600 line-clamp-2">
+                            {{ related.description|truncatewords:15 }}
+                        </p>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="col-span-3 text-center py-8 text-slate-500">
+                    <p>No related services available at the moment.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-slate-900 text-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <img src="https://nucleiglobal.com/wp-content/uploads/2023/05/cropped-NCSL.jpg" class="h-8 rounded-full">
+                        <span class="font-display font-bold text-lg">NCSL</span>
+                    </div>
+                    <p class="text-white/60 text-sm">Professional security and technology solutions for modern businesses.</p>
+                </div>
+                <div>
+                    <h4 class="font-display font-bold mb-4">Services</h4>
+                    <ul class="space-y-2 text-sm text-white/60">
+                        <li><a href="/#services" class="hover:text-brand transition">All Services</a></li>
+                        <li><a href="#" class="hover:text-brand transition">Security Systems</a></li>
+                        <li><a href="#" class="hover:text-brand transition">Network Solutions</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-display font-bold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm text-white/60">
+                        <li><a href="/#about" class="hover:text-brand transition">About Us</a></li>
+                        <li><a href="/#partners" class="hover:text-brand transition">Partners</a></li>
+                        <li><a href="/#contact" class="hover:text-brand transition">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-display font-bold mb-4">Connect</h4>
+                    <div class="flex gap-3">
+                        <a href="#" class="w-9 h-9 bg-white/10 hover:bg-brand rounded-full flex items-center justify-center transition">
+                            <i class="fab fa-facebook-f text-sm"></i>
+                        </a>
+                        <a href="#" class="w-9 h-9 bg-white/10 hover:bg-brand rounded-full flex items-center justify-center transition">
+                            <i class="fab fa-twitter text-sm"></i>
+                        </a>
+                        <a href="#" class="w-9 h-9 bg-white/10 hover:bg-brand rounded-full flex items-center justify-center transition">
+                            <i class="fab fa-linkedin-in text-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="pt-8 border-t border-white/10 text-center text-sm text-white/40">
+                <p>© 2024 NCSL. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Reading progress bar
+        window.addEventListener('scroll', function() {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById("progress-bar").style.width = scrolled + "%";
+        });
+    </script>
+
+</body>
+</html>

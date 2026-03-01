@@ -1,0 +1,472 @@
+ {% load static %}
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCSL | Security & Technology</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;600;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'display': ['Raleway', 'sans-serif'],
+                        'body': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: '#03c4eb', // Your specific color
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/css">
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .section-subtitle { font-family: 'Raleway', sans-serif; }
+        
+        /* Section Spacing */
+        .section-padding { padding: 80px 0; }
+        .small-section-padding { padding: 50px 0; }
+        
+        .section-subtitle {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #03c4eb;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        .section-title::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 45px;
+            height: 2px;
+            background: #03c4eb;
+        }
+
+        /* Interactive Dot Nav */
+        #dot-nav {
+            position: fixed;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border: 2px solid #03c4eb;
+            border-radius: 50%;
+            transition: 0.3s;
+            background: transparent;
+        }
+        .dot.active {
+            background: #03c4eb;
+            transform: scale(1.4);
+        }
+
+        /* Carousel Animation */
+        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .animate-scroll { animation: scroll 25s linear infinite; }
+    </style>
+</head>
+<body class="bg-white text-slate-700">
+
+    <nav id="dot-nav" class="hidden lg:flex">
+        <a href="#hero" class="dot active" title="Home"></a>
+        <a href="#features" class="dot" title="Features"></a>
+        <a href="#about" class="dot" title="About"></a>
+        <a href="#services" class="dot" title="Services"></a>
+        <a href="#partners" class="dot" title="Partners"></a>
+        <a href="#contact" class="dot" title="Contact"></a>
+    </nav>
+
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-16 flex items-center">
+        <div class="max-w-7xl mx-auto px-6 w-full flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <img src="https://nucleiglobal.com/wp-content/uploads/2023/05/cropped-NCSL.jpg" class="h-8 rounded-full">
+                <span class="font-display font-bold text-xl tracking-tighter">NCSL</span>
+            </div>
+            <nav class="hidden md:flex gap-6 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                <a href="#features" class="hover:text-brand transition">Features</a>
+                <a href="#about" class="hover:text-brand transition">About</a>
+                <a href="#services" class="hover:text-brand transition">Services</a>
+                <a href="#partners" class="hover:text-brand transition">Partners</a>
+                <a href="#contact" class="hover:text-brand transition">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <section id="hero" class="relative min-h-screen flex items-center justify-center bg-slate-900 text-white">
+        <div class="absolute inset-0 opacity-30">
+            <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80" class="w-full h-full object-cover">
+        </div>
+        <div class="relative z-10 text-center px-6">
+            <h1 class="text-4xl md:text-6xl font-black mb-4 uppercase">Innovative <span class="text-brand">Security </span>Solutions</h1>
+            <p class="text-md md:text-lg font-light mb-8 max-w-xl mx-auto opacity-70">Integrated solutions for global safety and technology infrastructure.</p>
+           <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+
+    <!-- Primary CTA -->
+    <a href="#services"
+       class="bg-brand text-white px-8 py-3 rounded-md font-bold uppercase text-[11px] tracking-widest
+              hover:brightness-110 active:scale-95 transition-all duration-200 shadow-md">
+        Our Services
+    </a>
+
+    <!-- Secondary CTA -->
+    <a href="#contact"
+       class="border border-brand text-brand px-8 py-3 rounded-md font-bold uppercase text-[11px] tracking-widest
+              hover:bg-brand hover:text-white active:scale-95 transition-all duration-200">
+        Get Started
+    </a>
+
+</div>
+
+        </div>
+    </section>
+
+    <section id="features" class="section-padding bg-slate-50">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <span class="section-subtitle">WHY CHOOSE US</span>
+            <h2 class="section-title">Features</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+                <div class="bg-white p-6 rounded shadow-sm border-b-2 border-transparent hover:border-brand transition">
+                    <i class="fa fa-shield-halved text-brand text-2xl mb-4"></i>
+                    <h4 class="font-bold text-sm mb-2">High Security</h4>
+                    <p class="text-[12px] text-slate-400">Military grade protection systems.</p>
+                </div>
+                <div class="bg-white p-6 rounded shadow-sm border-b-2 border-transparent hover:border-brand transition">
+                    <i class="fa fa-bolt text-brand text-2xl mb-4"></i>
+                    <h4 class="font-bold text-sm mb-2">Fast Response</h4>
+                    <p class="text-[12px] text-slate-400">Real-time monitoring and action.</p>
+                </div>
+                <div class="bg-white p-6 rounded shadow-sm border-b-2 border-transparent hover:border-brand transition">
+    <i class="fa fa-laptop-code text-brand text-2xl mb-4"></i>
+    <h4 class="font-bold text-sm mb-2">Smart Systems</h4>
+    <p class="text-[12px] text-slate-400">AI-powered automation solutions.</p>
+</div>
+<div class="bg-white p-6 rounded shadow-sm border-b-2 border-transparent hover:border-brand transition">
+    <i class="fa fa-headset text-brand text-2xl mb-4"></i>
+    <h4 class="font-bold text-sm mb-2">24/7 Support</h4>
+    <p class="text-[12px] text-slate-400">Always available expert assistance.</p>
+</div>
+                </div>
+        </div>
+    </section>
+
+  <!-- About Section -->
+
+    <section id="about" class="py-20 bg-gray-50 scroll-animate">
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <span class="section-subtitle">What We Do</span>
+                <h2 class="section-title">About Us</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+
+                <div class="order-2 md:order-1">
+
+                    <h2 class="font-raleway text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+
+                        Leading the Future of <span class="text-primary">Security Technology</span>
+
+                    </h2>
+
+                    <p class="text-gray-600 mb-6 leading-relaxed text-lg">
+
+                        With over a decade of experience, NCSL provides comprehensive security and technology solutions
+
+                        tailored for modern enterprises. Our integrated approach combines cutting-edge hardware,
+
+                        intelligent software, and unparalleled expertise.
+
+                    </p>
+
+                   
+
+                    <div class="space-y-4 mb-8">
+
+                        <div class="flex items-start space-x-4">
+
+                            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+
+                                <i class="fas fa-shield-alt text-primary text-xl"></i>
+
+                            </div>
+
+                            <div>
+
+                                <h4 class="font-raleway font-bold text-gray-900 text-lg mb-1">Enterprise Security</h4>
+
+                                <p class="text-gray-600">End-to-end protection systems</p>
+
+                            </div>
+
+                        </div>
+
+                        <div class="flex items-start space-x-4">
+
+                            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+
+                                <i class="fas fa-network-wired text-primary text-xl"></i>
+
+                            </div>
+
+                            <div>
+
+                                <h4 class="font-raleway font-bold text-gray-900 text-lg mb-1">Network Infrastructure</h4>
+
+                                <p class="text-gray-600">Active & passive networking solutions</p>
+
+                            </div>
+
+                        </div>
+
+                        <div class="flex items-start space-x-4">
+
+                            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+
+                                <i class="fas fa-headset text-primary text-xl"></i>
+
+                            </div>
+
+                            <div>
+
+                                <h4 class="font-raleway font-bold text-gray-900 text-lg mb-1">Audio Solutions</h4>
+
+                                <p class="text-gray-600">Professional sound & conference systems</p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                   
+
+                    <a href="#contact" class="inline-flex items-center px-8 py-4 bg-primary hover:bg-cyan-600 text-white font-semibold rounded-md shadow-lg hover:shadow-xl transition duration-300">
+
+                        <span>Contact Us</span>
+
+                        <i class="fas fa-envelope ml-2"></i>
+
+                    </a>
+
+                </div>
+
+               
+
+                <div class="order-1 md:order-2">
+
+                    <div class="relative">
+
+                        <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop"
+
+                             alt="Security Technology"
+
+                             class="rounded-lg shadow-2xl w-full h-auto">
+
+                        <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-primary/20 rounded-lg -z-10"></div>
+
+                        <div class="absolute -top-6 -right-6 w-32 h-32 bg-secondary/20 rounded-lg -z-10"></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+ <section id="services" class="small-section-padding bg-slate-50">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <span class="section-subtitle">Expertise</span>
+            <h2 class="section-title">Our Services</h2>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+            {% for service in services %}
+            <a href="{% url 'service_detail' service.slug %}"
+               class="bg-white p-6 rounded border border-slate-100 flex gap-4 items-start
+                      hover:shadow-md hover:border-slate-200 transition group">
+
+                <div class="text-brand text-2xl mt-1">
+                    <i class="fa {{ service.icon|default:'fa-check-circle' }}"></i>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-md mb-2 group-hover:text-brand transition">
+                        {{ service.name }}
+                    </h4>
+                    <p class="text-[12px] text-slate-500 leading-snug">
+                        {{ service.description|truncatewords:15 }}
+                    </p>
+                </div>
+
+            </a>
+            {% empty %}
+            <p class="col-span-3 text-center text-slate-400 text-sm italic">
+                Loading services...
+            </p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+
+ 
+   <section id="partners" class="section-padding bg-gradient-to-b from-white to-slate-50">
+    <div class="max-w-7xl mx-auto px-6">
+        
+        <!-- Section Header -->
+        <div class="text-center mb-16">
+            <span class="section-subtitle">Trusted By Industry Leaders</span>
+            <h2 class="section-title">Our Partners</h2>
+        </div>
+
+        <!-- Partners Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 items-center mb-12">
+            {% for partner in partners %}
+            <div class="group flex items-center justify-center p-6 bg-white rounded-lg border border-slate-100 hover:border-brand hover:shadow-md transition-all duration-300">
+                <img src="{{ partner.logo.url }}" 
+                     class="h-12 w-auto group-hover:scale-105 transition-transform duration-300 object-contain" 
+                     alt="{{ partner.name }}"
+                     title="{{ partner.name }}">
+            </div>
+            {% empty %}
+            <p class="col-span-full text-center text-slate-400">No partners available</p>
+            {% endfor %}
+        </div>
+
+        <!-- Scrolling Marquee -->
+        <div class="mt-16 overflow-hidden relative py-8 bg-slate-50/50 rounded-xl">
+            <div class="flex gap-16 w-max animate-scroll items-center">
+                {% for partner in partners %}
+                <img src="{{ partner.logo.url }}" 
+                     class="h-10 hover:scale-110 transition-transform duration-300" 
+                     alt="{{ partner.name }}">
+                {% endfor %}
+                {% for partner in partners %}
+                <img src="{{ partner.logo.url }}" 
+                     class="h-10 hover:scale-110 transition-transform duration-300" 
+                     alt="{{ partner.name }}">
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</section>
+    <section id="news" class="small-section-padding bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <span class="section-subtitle">Updates</span>
+            <h2 class="section-title">Latest News</h2>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+            {% for news in news_list %}
+            <a href="{% url 'news_detail' news.slug %}"
+               class="group bg-slate-50 rounded border border-slate-100 overflow-hidden hover:shadow-md transition">
+
+                {% if news.image %}
+                <img src="{{ news.image.url }}" alt="{{ news.title }}"
+                     class="h-40 w-full object-cover group-hover:scale-105 transition duration-300">
+                {% endif %}
+
+                <div class="p-5">
+                    <p class="text-[11px] text-slate-400 mb-1">
+                        {{ news.published_at|date:"M d, Y" }}
+                    </p>
+
+                    <h4 class="font-bold text-md mb-2 group-hover:text-brand transition">
+                        {{ news.title }}
+                    </h4>
+
+                    <p class="text-[12px] text-slate-500 leading-snug">
+                        {{ news.excerpt|truncatewords:18 }}
+                    </p>
+
+                    <span class="inline-block mt-3 text-brand text-[11px] font-semibold tracking-wide uppercase">
+                        Read More →
+                    </span>
+                </div>
+            </a>
+            {% empty %}
+            <p class="col-span-3 text-center text-slate-400 text-sm italic">
+                No news published yet.
+            </p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+ 
+    <section id="contact" class="section-padding bg-slate-50">
+        <div class="max-w-2xl mx-auto px-6 text-center">
+            <span class="section-subtitle">Get In Touch</span>
+            <h2 class="section-title">Contact</h2>
+            <form class="mt-10 grid grid-cols-1 gap-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" placeholder="Name" class="p-3 bg-white border rounded text-sm outline-none focus:border-brand">
+                    <input type="email" placeholder="Email" class="p-3 bg-white border rounded text-sm outline-none focus:border-brand">
+                </div>
+                <textarea placeholder="Your Message" rows="4" class="p-3 bg-white border rounded text-sm outline-none focus:border-brand"></textarea>
+                <button class="bg-brand text-white py-3 rounded font-bold uppercase text-[11px] tracking-widest shadow-lg hover:brightness-110 transition">Send Inquiry</button>
+            </form>
+        </div>
+    </section>
+
+    <footer class="py-10 bg-slate-900 text-white text-center">
+        <p class="text-[10px] tracking-widest uppercase opacity-40">© 2024 NCSL | Protected by Professional Intelligence</p>
+    </footer>
+
+    <script>
+        const sections = document.querySelectorAll("section");
+        const dots = document.querySelectorAll(".dot");
+
+        window.onscroll = () => {
+            let current = "";
+            sections.forEach((section) => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute("id");
+                }
+            });
+
+            dots.forEach((dot) => {
+                dot.classList.remove("active");
+                if (dot.getAttribute("href").includes(current)) {
+                    dot.classList.add("active");
+                }
+            });
+        };
+    </script>
+</body>
+</html>

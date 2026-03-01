@@ -1,0 +1,1103 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redterest - Pinterest Style Reddit Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pinterest: '#E60023',
+                        pinterestDark: '#ad081b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #111;
+        }
+
+        /* Masonry Grid */
+        .masonry {
+            column-count: 2;
+            column-gap: 16px;
+            padding: 16px;
+        }
+
+        @media (min-width: 640px) {
+            .masonry {
+                column-count: 3;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .masonry {
+                column-count: 4;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .masonry {
+                column-count: 5;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .masonry {
+                column-count: 6;
+                column-gap: 20px;
+                padding: 20px;
+            }
+        }
+
+        @media (min-width: 1536px) {
+            .masonry {
+                column-count: 7;
+            }
+        }
+
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 16px;
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #1a1a1a;
+            cursor: zoom-in;
+            transition: transform 0.2s ease;
+        }
+
+        @media (min-width: 1280px) {
+            .masonry-item {
+                margin-bottom: 20px;
+                border-radius: 20px;
+            }
+        }
+
+        .masonry-item:hover {
+            transform: scale(1.01);
+        }
+
+        .masonry-item img, .masonry-item video {
+            width: 100%;
+            display: block;
+        }
+
+        .masonry-item:hover img, .masonry-item:hover video {
+            filter: brightness(0.85);
+        }
+
+        .masonry-item .overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+            pointer-events: none;
+        }
+
+        .masonry-item:hover .overlay {
+            opacity: 1;
+        }
+
+        .masonry-item .overlay * {
+            pointer-events: auto;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Removed fade-in animation for better performance */
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        /* Modal */
+        .modal-enter {
+            animation: modalEnter 0.3s ease-out;
+        }
+
+        @keyframes modalEnter {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Search suggestions */
+        .search-container:focus-within .search-suggestions {
+            display: block;
+        }
+
+        /* Category pills scroll */
+        .pills-container {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .pills-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Text shadow for readability */
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* NSFW Blur */
+        .nsfw-blur {
+            filter: blur(30px);
+            transition: filter 0.3s ease;
+        }
+
+        .masonry-item:hover .nsfw-blur {
+            filter: blur(0);
+        }
+
+        .nsfw-blur-disabled {
+            filter: blur(0) !important;
+        }
+    </style>
+</head>
+<body class="bg-black min-h-screen">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-black/90 backdrop-blur-lg border-b border-gray-800">
+        <div class="max-w-screen-2xl mx-auto px-4 py-3">
+            <div class="flex items-center gap-4">
+                <!-- Logo -->
+                <div class="flex items-center gap-2 cursor-pointer flex-shrink-0" onclick="goHome()">
+                    <div class="w-10 h-10 bg-pinterest rounded-full flex items-center justify-center">
+                        <i class="fab fa-reddit-alien text-white text-xl"></i>
+                    </div>
+                    <span class="text-white font-bold text-xl hidden md:block">Redterest</span>
+                </div>
+
+                <!-- Navigation Pills -->
+                <div class="hidden md:flex items-center gap-2">
+                    <button onclick="goHome()" class="px-4 py-2 rounded-full font-semibold transition-all bg-white text-black hover:bg-gray-200" id="homeBtn">
+                        Home
+                    </button>
+                    <button onclick="showExplore()" class="px-4 py-2 rounded-full font-semibold transition-all text-white hover:bg-gray-800" id="exploreBtn">
+                        Explore
+                    </button>
+                </div>
+                
+                <!-- Search Bar -->
+                <div class="flex-1 max-w-2xl relative search-container">
+                    <form id="searchForm" class="relative">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input 
+                                type="text" 
+                                id="subredditInput" 
+                                placeholder="Search subreddits..."
+                                class="w-full bg-gray-800 hover:bg-gray-700 focus:bg-gray-700 text-white pl-12 pr-4 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-pinterest transition-all placeholder-gray-400"
+                                autocomplete="off"
+                            >
+                            <button type="button" id="clearSearch" class="hidden absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Search Suggestions -->
+                    <div class="search-suggestions hidden absolute top-full left-0 right-0 mt-2 bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden z-50" id="searchSuggestions">
+                        <div class="p-2">
+                            <div class="text-gray-400 text-sm px-3 py-2">Popular searches</div>
+                            <div id="suggestionsList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Actions -->
+                <div class="flex items-center gap-2">
+                    <button id="nsfwToggle" onclick="toggleNSFWBlur()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full focus:outline-none transition-all hidden sm:flex items-center gap-2" title="Toggle NSFW Blur">
+                        <i class="fas fa-eye-slash"></i>
+                        <span class="hidden lg:inline">Blur NSFW</span>
+                    </button>
+                    <select id="sortSelect" class="bg-gray-800 text-white px-4 py-2 rounded-full focus:outline-none focus:ring-2 focus:ring-pinterest cursor-pointer hidden sm:block">
+                        <option value="hot">🔥 Hot</option>
+                        <option value="new">✨ New</option>
+                        <option value="top">📈 Top</option>
+                        <option value="rising">🚀 Rising</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="border-t border-gray-800 bg-black/50" id="categoryBar">
+            <div class="max-w-screen-2xl mx-auto px-4 py-3">
+                <div class="pills-container flex gap-2 overflow-x-auto pb-1">
+                    <button onclick="loadSubreddit('all')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🌍 All
+                    </button>
+                    <button onclick="loadSubreddit('pics')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        📸 Pics
+                    </button>
+                    <button onclick="loadSubreddit('art')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🎨 Art
+                    </button>
+                    <button onclick="loadSubreddit('aww')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🐱 Cute
+                    </button>
+                    <button onclick="loadSubreddit('earthporn')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🏔️ Nature
+                    </button>
+                    <button onclick="loadSubreddit('food')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🍕 Food
+                    </button>
+                    <button onclick="loadSubreddit('itookapicture')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        📷 Photography
+                    </button>
+                    <button onclick="loadSubreddit('designporn')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        ✏️ Design
+                    </button>
+                    <button onclick="loadSubreddit('wallpapers')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🖼️ Wallpapers
+                    </button>
+                    <button onclick="loadSubreddit('spaceporn')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🚀 Space
+                    </button>
+                    <button onclick="loadSubreddit('architectureporn')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🏛️ Architecture
+                    </button>
+                    <button onclick="loadSubreddit('CozyPlaces')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🛋️ Cozy
+                    </button>
+                    <button onclick="loadSubreddit('gaming')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🎮 Gaming
+                    </button>
+                    <button onclick="loadSubreddit('anime')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        🎌 Anime
+                    </button>
+                    <button onclick="loadSubreddit('memes')" class="category-pill px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full whitespace-nowrap transition-all text-sm font-medium flex-shrink-0">
+                        😂 Memes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Current Subreddit Banner -->
+    <div id="subredditBanner" class="hidden bg-gradient-to-r from-pinterest/20 to-purple-900/20 border-b border-gray-800">
+        <div class="max-w-screen-2xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-pinterest rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-lg" id="subredditInitial">r</span>
+                    </div>
+                    <div>
+                        <h1 id="subredditTitle" class="text-xl font-bold text-white">r/subreddit</h1>
+                        <p id="subredditMeta" class="text-gray-400 text-sm"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="nsfwBadge" class="hidden bg-red-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        18+
+                    </span>
+                    <a id="redditLink" href="#" target="_blank" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-sm transition-all">
+                        <i class="fab fa-reddit mr-2"></i>View on Reddit
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-screen-2xl mx-auto">
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen" class="py-16 px-4">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-6xl font-bold text-white mb-4">
+                    Discover <span class="text-pinterest">Reddit</span> visually
+                </h1>
+                <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">
+                    Browse your favorite subreddits in a beautiful Pinterest-style layout
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+                <div onclick="loadSubreddit('pics')" class="group cursor-pointer">
+                    <div class="relative rounded-2xl overflow-hidden aspect-[3/4] bg-gray-800">
+                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400" alt="" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <p class="text-white font-bold text-lg">r/pics</p>
+                            <p class="text-gray-300 text-sm">Photography</p>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="loadSubreddit('art')" class="group cursor-pointer">
+                    <div class="relative rounded-2xl overflow-hidden aspect-[3/4] bg-gray-800">
+                        <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400" alt="" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <p class="text-white font-bold text-lg">r/art</p>
+                            <p class="text-gray-300 text-sm">Artwork</p>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="loadSubreddit('aww')" class="group cursor-pointer">
+                    <div class="relative rounded-2xl overflow-hidden aspect-[3/4] bg-gray-800">
+                        <img src="https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400" alt="" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <p class="text-white font-bold text-lg">r/aww</p>
+                            <p class="text-gray-300 text-sm">Cute Animals</p>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="loadSubreddit('earthporn')" class="group cursor-pointer">
+                    <div class="relative rounded-2xl overflow-hidden aspect-[3/4] bg-gray-800">
+                        <img src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400" alt="" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <p class="text-white font-bold text-lg">r/earthporn</p>
+                            <p class="text-gray-300 text-sm">Nature</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="loadingSkeleton" class="hidden masonry">
+            <div class="masonry-item skeleton" style="height: 280px;"></div>
+            <div class="masonry-item skeleton" style="height: 350px;"></div>
+            <div class="masonry-item skeleton" style="height: 220px;"></div>
+            <div class="masonry-item skeleton" style="height: 300px;"></div>
+            <div class="masonry-item skeleton" style="height: 260px;"></div>
+            <div class="masonry-item skeleton" style="height: 320px;"></div>
+            <div class="masonry-item skeleton" style="height: 240px;"></div>
+            <div class="masonry-item skeleton" style="height: 290px;"></div>
+            <div class="masonry-item skeleton" style="height: 270px;"></div>
+            <div class="masonry-item skeleton" style="height: 310px;"></div>
+            <div class="masonry-item skeleton" style="height: 250px;"></div>
+            <div class="masonry-item skeleton" style="height: 280px;"></div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden py-20 px-4 text-center">
+            <div class="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-search text-gray-600 text-4xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2">No results found</h3>
+            <p class="text-gray-400 mb-6">We couldn't find that subreddit. Try searching for something else!</p>
+            <button onclick="goHome()" class="bg-pinterest hover:bg-pinterestDark text-white px-6 py-3 rounded-full font-semibold transition-all">
+                Go Home
+            </button>
+        </div>
+
+        <!-- Masonry Grid -->
+        <div id="postsContainer" class="masonry">
+            <!-- Posts will be inserted here -->
+        </div>
+
+        <!-- Loading More Indicator -->
+        <div id="loadingMore" class="hidden py-8 text-center">
+            <div class="inline-flex items-center gap-3 bg-gray-800 px-6 py-3 rounded-full">
+                <i class="fas fa-spinner fa-spin text-pinterest"></i>
+                <span class="text-white">Loading more...</span>
+            </div>
+        </div>
+
+        <!-- End of Feed -->
+        <div id="endOfFeed" class="hidden py-12 text-center">
+            <p class="text-gray-500">You've reached the end! 🎉</p>
+        </div>
+    </main>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="hidden fixed inset-0 bg-black/95 z-[100] overflow-y-auto">
+        <div class="min-h-screen flex items-start justify-center p-4 md:p-8">
+            <div class="modal-enter bg-gray-900 rounded-3xl overflow-hidden max-w-6xl w-full my-8 flex flex-col lg:flex-row shadow-2xl" id="modalContent">
+                <!-- Image Side -->
+                <div class="lg:w-2/3 bg-black flex items-center justify-center relative min-h-[300px] lg:min-h-[600px]">
+                    <div id="modalLoading" class="absolute inset-0 flex items-center justify-center">
+                        <i class="fas fa-spinner fa-spin text-pinterest text-4xl"></i>
+                    </div>
+                    <img id="modalImage" src="" alt="" class="max-w-full max-h-[80vh] object-contain hidden">
+                    <video id="modalVideo" controls loop muted class="max-w-full max-h-[80vh] object-contain hidden"></video>
+                </div>
+                
+                <!-- Info Side -->
+                <div class="lg:w-1/3 p-6 flex flex-col bg-gray-900">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <button onclick="copyLink()" class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all" title="Copy Link">
+                                <i class="fas fa-link text-white"></i>
+                            </button>
+                            <a id="modalRedditLink" href="#" target="_blank" class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all" title="View on Reddit">
+                                <i class="fab fa-reddit text-white"></i>
+                            </a>
+                            <a id="modalImageLink" href="#" target="_blank" class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all" title="Open Image">
+                                <i class="fas fa-external-link-alt text-white"></i>
+                            </a>
+                        </div>
+                        <button onclick="closeModal()" class="w-10 h-10 bg-gray-800 hover:bg-pinterest rounded-full flex items-center justify-center transition-all">
+                            <i class="fas fa-times text-white"></i>
+                        </button>
+                    </div>
+
+                    <!-- Title -->
+                    <h2 id="modalTitle" class="text-white text-xl font-bold mb-4 leading-tight"></h2>
+
+                    <!-- Author & Subreddit -->
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-pinterest rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <p id="modalAuthor" class="text-white font-semibold"></p>
+                            <p id="modalSubreddit" class="text-gray-400 text-sm"></p>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="flex items-center gap-4 py-4 border-t border-b border-gray-800 mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-arrow-up text-pinterest"></i>
+                            <span id="modalScore" class="text-white font-semibold"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-comment text-gray-400"></i>
+                            <span id="modalComments" class="text-white"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-clock text-gray-400"></i>
+                            <span id="modalTime" class="text-gray-400"></span>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div id="modalDescription" class="text-gray-300 text-sm flex-1 overflow-y-auto max-h-48"></div>
+
+                    <!-- Actions -->
+                    <div class="mt-6 flex gap-3">
+                        <a id="modalFullLink" href="#" target="_blank" class="flex-1 bg-pinterest hover:bg-pinterestDark text-white py-3 rounded-full font-semibold text-center transition-all">
+                            View on Reddit
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-[200] hidden transition-all">
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- Back to Top -->
+    <button id="backToTop" class="fixed bottom-6 right-6 w-12 h-12 bg-pinterest hover:bg-pinterestDark text-white rounded-full shadow-lg z-50 hidden transition-all hover:scale-110" onclick="scrollToTop()">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+        // CORS Proxies
+        const CORS_PROXIES = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            ''
+        ];
+        let currentProxyIndex = 0;
+
+        // State
+        let currentSubreddit = '';
+        let afterToken = null;
+        let isLoading = false;
+        let currentSort = 'hot';
+        let currentModalData = null;
+        let nsfwBlurEnabled = true;
+
+        // Popular subreddits for suggestions
+        const popularSubreddits = [
+            'pics', 'art', 'aww', 'earthporn', 'food', 'itookapicture',
+            'designporn', 'wallpapers', 'spaceporn', 'architectureporn',
+            'cozyplaces', 'gaming', 'anime', 'memes', 'cats', 'dogs',
+            'natureporn', 'cityporn', 'carporn', 'roomporn', 'bookporn'
+        ];
+
+        // DOM Elements
+        const searchForm = document.getElementById('searchForm');
+        const subredditInput = document.getElementById('subredditInput');
+        const sortSelect = document.getElementById('sortSelect');
+        const postsContainer = document.getElementById('postsContainer');
+        const loadingSkeleton = document.getElementById('loadingSkeleton');
+        const errorMessage = document.getElementById('errorMessage');
+        const subredditBanner = document.getElementById('subredditBanner');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const loadingMore = document.getElementById('loadingMore');
+        const endOfFeed = document.getElementById('endOfFeed');
+        const backToTop = document.getElementById('backToTop');
+        const imageModal = document.getElementById('imageModal');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        const suggestionsList = document.getElementById('suggestionsList');
+        const clearSearch = document.getElementById('clearSearch');
+        const nsfwToggle = document.getElementById('nsfwToggle');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSuggestions();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const sub = urlParams.get('sub');
+            if (sub) {
+                loadSubreddit(sub);
+            }
+        });
+
+        // Toggle NSFW Blur
+        function toggleNSFWBlur() {
+            nsfwBlurEnabled = !nsfwBlurEnabled;
+            const blurElements = document.querySelectorAll('.nsfw-blur');
+            
+            if (nsfwBlurEnabled) {
+                nsfwToggle.innerHTML = '<i class="fas fa-eye-slash"></i><span class="hidden lg:inline">Blur NSFW</span>';
+                blurElements.forEach(el => el.classList.remove('nsfw-blur-disabled'));
+            } else {
+                nsfwToggle.innerHTML = '<i class="fas fa-eye"></i><span class="hidden lg:inline">Show NSFW</span>';
+                blurElements.forEach(el => el.classList.add('nsfw-blur-disabled'));
+            }
+        }
+
+        // Render search suggestions
+        function renderSuggestions(filter = '') {
+            const filtered = filter 
+                ? popularSubreddits.filter(s => s.includes(filter.toLowerCase()))
+                : popularSubreddits.slice(0, 8);
+            
+            suggestionsList.innerHTML = filtered.map(sub => `
+                <button onclick="loadSubreddit('${sub}')" class="w-full text-left px-3 py-2 hover:bg-gray-700 rounded-lg text-white flex items-center gap-3 transition-all">
+                    <i class="fab fa-reddit text-gray-400"></i>
+                    r/${sub}
+                </button>
+            `).join('');
+        }
+
+        // Search input events
+        subredditInput.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            clearSearch.classList.toggle('hidden', !value);
+            renderSuggestions(value);
+        });
+
+        subredditInput.addEventListener('focus', () => {
+            searchSuggestions.classList.remove('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                searchSuggestions.classList.add('hidden');
+            }
+        });
+
+        clearSearch.addEventListener('click', () => {
+            subredditInput.value = '';
+            clearSearch.classList.add('hidden');
+            renderSuggestions();
+        });
+
+        // Search form submit
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const subreddit = subredditInput.value.trim().replace(/^r\//, '');
+            if (subreddit) {
+                loadSubreddit(subreddit);
+                searchSuggestions.classList.add('hidden');
+            }
+        });
+
+        // Sort change
+        sortSelect.addEventListener('change', () => {
+            currentSort = sortSelect.value;
+            if (currentSubreddit) {
+                fetchSubreddit(currentSubreddit);
+            }
+        });
+
+        // Go home
+        function goHome() {
+            welcomeScreen.classList.remove('hidden');
+            postsContainer.innerHTML = '';
+            subredditBanner.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            loadingMore.classList.add('hidden');
+            endOfFeed.classList.add('hidden');
+            currentSubreddit = '';
+            afterToken = null;
+            subredditInput.value = '';
+            window.history.replaceState({}, '', window.location.pathname);
+            
+            document.getElementById('homeBtn').classList.add('bg-white', 'text-black');
+            document.getElementById('homeBtn').classList.remove('text-white');
+            document.getElementById('exploreBtn').classList.remove('bg-white', 'text-black');
+            document.getElementById('exploreBtn').classList.add('text-white');
+        }
+
+        // Show explore
+        function showExplore() {
+            document.getElementById('exploreBtn').classList.add('bg-white', 'text-black');
+            document.getElementById('exploreBtn').classList.remove('text-white');
+            document.getElementById('homeBtn').classList.remove('bg-white', 'text-black');
+            document.getElementById('homeBtn').classList.add('text-white');
+            loadSubreddit('all');
+        }
+
+        // Load subreddit
+        function loadSubreddit(sub) {
+            subredditInput.value = sub;
+            currentProxyIndex = 0;
+            fetchSubreddit(sub);
+            
+            document.getElementById('homeBtn').classList.remove('bg-white', 'text-black');
+            document.getElementById('homeBtn').classList.add('text-white');
+            document.getElementById('exploreBtn').classList.remove('bg-white', 'text-black');
+            document.getElementById('exploreBtn').classList.add('text-white');
+        }
+
+        // Fetch subreddit
+        async function fetchSubreddit(subreddit, loadMore = false) {
+            if (isLoading) return;
+            isLoading = true;
+
+            if (!loadMore) {
+                currentSubreddit = subreddit;
+                afterToken = null;
+                postsContainer.innerHTML = '';
+                welcomeScreen.classList.add('hidden');
+                loadingSkeleton.classList.remove('hidden');
+                endOfFeed.classList.add('hidden');
+            } else {
+                loadingMore.classList.remove('hidden');
+            }
+            
+            errorMessage.classList.add('hidden');
+
+            const redditUrl = `https://www.reddit.com/r/${subreddit}/${currentSort}.json?limit=25${afterToken && loadMore ? `&after=${afterToken}` : ''}`;
+
+            let success = false;
+
+            for (let i = currentProxyIndex; i < CORS_PROXIES.length && !success; i++) {
+                try {
+                    const proxy = CORS_PROXIES[i];
+                    const url = proxy ? `${proxy}${encodeURIComponent(redditUrl)}` : redditUrl;
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const data = await response.json();
+                    if (!data.data || !data.data.children) throw new Error('Invalid response');
+
+                    // Filter for image/video posts only
+                    const mediaPosts = data.data.children.filter(post => isMediaPost(post.data));
+
+                    if (mediaPosts.length === 0 && !loadMore) {
+                        errorMessage.classList.remove('hidden');
+                        subredditBanner.classList.add('hidden');
+                        success = true;
+                        break;
+                    }
+
+                    afterToken = data.data.after;
+                    
+                    if (!loadMore && mediaPosts.length > 0) {
+                        updateBanner(subreddit, mediaPosts[0].data);
+                    }
+
+                    renderPosts(mediaPosts);
+                    
+                    if (!afterToken) {
+                        endOfFeed.classList.remove('hidden');
+                    }
+
+                    window.history.replaceState({}, '', `?sub=${subreddit}`);
+                    currentProxyIndex = i;
+                    success = true;
+
+                } catch (error) {
+                    console.error(`Proxy ${i} failed:`, error);
+                }
+            }
+
+            if (!success && !loadMore) {
+                errorMessage.classList.remove('hidden');
+                subredditBanner.classList.add('hidden');
+            }
+
+            loadingSkeleton.classList.add('hidden');
+            loadingMore.classList.add('hidden');
+            isLoading = false;
+        }
+
+        // Update banner
+        function updateBanner(subreddit, post) {
+            subredditBanner.classList.remove('hidden');
+            document.getElementById('subredditTitle').textContent = `r/${subreddit}`;
+            document.getElementById('subredditInitial').textContent = subreddit[0].toUpperCase();
+            document.getElementById('redditLink').href = `https://reddit.com/r/${subreddit}`;
+            
+            const meta = [];
+            if (post.subreddit_subscribers) {
+                meta.push(`${formatNumber(post.subreddit_subscribers)} members`);
+            }
+            document.getElementById('subredditMeta').textContent = meta.join(' • ');
+
+            document.getElementById('nsfwBadge').classList.toggle('hidden', !post.over_18);
+        }
+
+        // Render posts
+        function renderPosts(posts) {
+            posts.forEach((post, index) => {
+                const postData = post.data;
+                const element = createPostElement(postData, index);
+                if (element) {
+                    postsContainer.appendChild(element);
+                }
+            });
+        }
+
+        // Create post element
+        function createPostElement(post, index) {
+            const mediaUrl = getMediaUrl(post);
+            if (!mediaUrl) return null;
+
+            const div = document.createElement('div');
+            div.className = 'masonry-item';
+            
+            const isVideo = post.is_video || mediaUrl.url.includes('.gif') || mediaUrl.type === 'video';
+            const blurClass = (post.over_18 && nsfwBlurEnabled) ? 'nsfw-blur' : (post.over_18 && !nsfwBlurEnabled) ? 'nsfw-blur nsfw-blur-disabled' : '';
+            
+            // Get poster/thumbnail for videos
+            let posterUrl = '';
+            if (isVideo && post.preview && post.preview.images && post.preview.images[0]) {
+                posterUrl = post.preview.images[0].source.url.replace(/&amp;/g, '&');
+            }
+            
+            if (isVideo) {
+                // Use poster image instead of loading video in grid
+                div.innerHTML = `
+                    <div class="relative">
+                        <img 
+                            src="${posterUrl || mediaUrl.url}" 
+                            alt="${escapeHtml(post.title)}"
+                            class="${blurClass}"
+                            loading="lazy"
+                            onerror="this.closest('.masonry-item').remove()"
+                        >
+                        <div class="absolute top-2 right-2 bg-black/70 rounded-full w-10 h-10 flex items-center justify-center">
+                            <i class="fas fa-play text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="overlay">
+                        <div class="flex justify-end gap-2">
+                            <a href="${post.url}" target="_blank" onclick="event.stopPropagation()" class="w-8 h-8 bg-white hover:bg-gray-200 rounded-full flex items-center justify-center transition-all" title="Open Video">
+                                <i class="fas fa-download text-gray-800 text-sm"></i>
+                            </a>
+                            <a href="https://reddit.com${post.permalink}" target="_blank" onclick="event.stopPropagation()" class="w-8 h-8 bg-pinterest hover:bg-pinterestDark rounded-full flex items-center justify-center transition-all" title="View on Reddit">
+                                <i class="fab fa-reddit text-white text-sm"></i>
+                            </a>
+                        </div>
+                        <div>
+                            ${post.over_18 ? '<span class="inline-block bg-red-600 text-white text-xs px-2 py-1 rounded mb-2">NSFW</span>' : ''}
+                            <span class="inline-block bg-black/70 text-white text-xs px-2 py-1 rounded mb-2"><i class="fas fa-video mr-1"></i>Video</span>
+                            <p class="text-white text-sm font-semibold leading-tight text-shadow line-clamp-3">${escapeHtml(post.title)}</p>
+                            <div class="flex items-center gap-3 mt-2 text-white/80 text-xs">
+                                <span><i class="fas fa-arrow-up mr-1"></i>${formatNumber(post.score)}</span>
+                                <span><i class="fas fa-comment mr-1"></i>${formatNumber(post.num_comments)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <img 
+                        src="${mediaUrl.url}" 
+                        alt="${escapeHtml(post.title)}"
+                        class="${blurClass}"
+                        loading="lazy"
+                        onerror="this.closest('.masonry-item').remove()"
+                    >
+                    <div class="overlay">
+                        <div class="flex justify-end gap-2">
+                            <a href="${post.url}" target="_blank" onclick="event.stopPropagation()" class="w-8 h-8 bg-white hover:bg-gray-200 rounded-full flex items-center justify-center transition-all" title="Open Image">
+                                <i class="fas fa-download text-gray-800 text-sm"></i>
+                            </a>
+                            <a href="https://reddit.com${post.permalink}" target="_blank" onclick="event.stopPropagation()" class="w-8 h-8 bg-pinterest hover:bg-pinterestDark rounded-full flex items-center justify-center transition-all" title="View on Reddit">
+                                <i class="fab fa-reddit text-white text-sm"></i>
+                            </a>
+                        </div>
+                        <div>
+                            ${post.over_18 ? '<span class="inline-block bg-red-600 text-white text-xs px-2 py-1 rounded mb-2">NSFW</span>' : ''}
+                            <p class="text-white text-sm font-semibold leading-tight text-shadow line-clamp-3">${escapeHtml(post.title)}</p>
+                            <div class="flex items-center gap-3 mt-2 text-white/80 text-xs">
+                                <span><i class="fas fa-arrow-up mr-1"></i>${formatNumber(post.score)}</span>
+                                <span><i class="fas fa-comment mr-1"></i>${formatNumber(post.num_comments)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            div.onclick = () => openModal(post);
+            return div;
+        }
+
+        // Check if media post
+        function isMediaPost(post) {
+            if (!post) return false;
+            const url = (post.url || '').toLowerCase();
+            const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+            const videoExts = ['.mp4', '.webm', '.gifv'];
+            return post.post_hint === 'image' || 
+                   post.is_video ||
+                   imageExts.some(ext => url.includes(ext)) ||
+                   videoExts.some(ext => url.includes(ext)) ||
+                   post.is_reddit_media_domain ||
+                   (post.preview && post.preview.images) ||
+                   (post.media && post.media.reddit_video);
+        }
+
+        // Get media URL
+        function getMediaUrl(post) {
+            // Check for Reddit video
+            if (post.is_video && post.media && post.media.reddit_video) {
+                return { url: post.media.reddit_video.fallback_url, type: 'video' };
+            }
+
+            // Check for direct URL
+            if (post.url_overridden_by_dest) {
+                const url = post.url_overridden_by_dest.toLowerCase();
+                if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.webm'].some(ext => url.includes(ext))) {
+                    const type = ['.mp4', '.webm', '.gif'].some(ext => url.includes(ext)) ? 'video' : 'image';
+                    return { url: post.url_overridden_by_dest, type };
+                }
+            }
+            
+            // Check for preview images
+            if (post.preview && post.preview.images && post.preview.images[0]) {
+                const resolutions = post.preview.images[0].resolutions;
+                if (resolutions && resolutions.length > 0) {
+                    return { url: resolutions[resolutions.length - 1].url.replace(/&amp;/g, '&'), type: 'image' };
+                }
+                return { url: post.preview.images[0].source.url.replace(/&amp;/g, '&'), type: 'image' };
+            }
+            
+            return null;
+        }
+
+        // Get full media
+        function getFullMedia(post) {
+            if (post.is_video && post.media && post.media.reddit_video) {
+                return { url: post.media.reddit_video.fallback_url, type: 'video' };
+            }
+            
+            if (post.url_overridden_by_dest) {
+                const url = post.url_overridden_by_dest.toLowerCase();
+                const type = ['.mp4', '.webm', '.gif'].some(ext => url.includes(ext)) ? 'video' : 'image';
+                return { url: post.url_overridden_by_dest, type };
+            }
+            
+            if (post.preview && post.preview.images && post.preview.images[0]) {
+                return { url: post.preview.images[0].source.url.replace(/&amp;/g, '&'), type: 'image' };
+            }
+            
+            return { url: post.url, type: 'image' };
+        }
+
+        // Open modal
+        function openModal(post) {
+            currentModalData = post;
+            
+            const media = getFullMedia(post);
+            const modalImage = document.getElementById('modalImage');
+            const modalVideo = document.getElementById('modalVideo');
+            
+            document.getElementById('modalLoading').classList.remove('hidden');
+            
+            if (media.type === 'video') {
+                modalImage.classList.add('hidden');
+                modalVideo.classList.remove('hidden');
+                modalVideo.src = media.url;
+                modalVideo.load();
+                
+                const playPromise = modalVideo.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            document.getElementById('modalLoading').classList.add('hidden');
+                        })
+                        .catch(error => {
+                            console.log('Video play failed:', error);
+                            document.getElementById('modalLoading').classList.add('hidden');
+                        });
+                }
+                
+                modalVideo.onloadeddata = () => {
+                    document.getElementById('modalLoading').classList.add('hidden');
+                };
+            } else {
+                modalVideo.classList.add('hidden');
+                modalVideo.pause();
+                modalVideo.src = '';
+                modalImage.classList.remove('hidden');
+                modalImage.style.opacity = '0';
+                modalImage.src = media.url;
+            }
+            
+            document.getElementById('modalTitle').textContent = post.title;
+            document.getElementById('modalAuthor').textContent = `u/${post.author}`;
+            document.getElementById('modalSubreddit').textContent = `r/${post.subreddit}`;
+            document.getElementById('modalScore').textContent = formatNumber(post.score);
+            document.getElementById('modalComments').textContent = `${formatNumber(post.num_comments)} comments`;
+            document.getElementById('modalTime').textContent = getTimeAgo(post.created_utc);
+            document.getElementById('modalDescription').textContent = post.selftext || '';
+            
+            document.getElementById('modalRedditLink').href = `https://reddit.com${post.permalink}`;
+            document.getElementById('modalImageLink').href = media.url;
+            document.getElementById('modalFullLink').href = `https://reddit.com${post.permalink}`;
+            
+            imageModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Modal image load
+        document.getElementById('modalImage').addEventListener('load', () => {
+            document.getElementById('modalLoading').classList.add('hidden');
+            document.getElementById('modalImage').style.opacity = '1';
+        });
+
+        // Close modal
+        function closeModal() {
+            imageModal.classList.add('hidden');
+            document.body.style.overflow = '';
+            const modalVideo = document.getElementById('modalVideo');
+            modalVideo.pause();
+            modalVideo.src = '';
+            currentModalData = null;
+        }
+
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal || e.target.closest('#modalContent') === null) {
+                closeModal();
+            }
+        });
+
+        // Copy link
+        function copyLink() {
+            if (currentModalData) {
+                navigator.clipboard.writeText(`https://reddit.com${currentModalData.permalink}`);
+                showToast('Link copied!');
+            }
+        }
+
+        // Format number
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Time ago
+        function getTimeAgo(timestamp) {
+            const seconds = Math.floor(Date.now() / 1000 - timestamp);
+            const intervals = { y: 31536000, mo: 2592000, w: 604800, d: 86400, h: 3600, m: 60 };
+            for (const [unit, secs] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / secs);
+                if (interval >= 1) return `${interval}${unit} ago`;
+            }
+            return 'now';
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Show toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2000);
+        }
+
+        // Scroll to top
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Scroll events
+        window.addEventListener('scroll', () => {
+            // Back to top button
+            backToTop.classList.toggle('hidden', window.scrollY < 500);
+            
+            // Infinite scroll
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2000) {
+                if (!isLoading && afterToken && currentSubreddit) {
+                    fetchSubreddit(currentSubreddit, true);
+                }
+            }
+        });
+
+        // Keyboard events
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+            if (e.key === '/' && document.activeElement !== subredditInput) {
+                e.preventDefault();
+                subredditInput.focus();
+            }
+        });
+    </script>
+</body>
+</html>

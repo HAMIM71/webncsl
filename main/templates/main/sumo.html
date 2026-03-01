@@ -1,0 +1,565 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHER // Focus OS v2</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    },
+                    colors: {
+                        bg: '#050505',
+                        glass: 'rgba(20, 20, 25, 0.6)',
+                        accent: '#cfbaff',
+                        success: '#a7f3d0'
+                    },
+                    animation: {
+                        'blob': 'blob 15s infinite',
+                        'breathe': 'breathe 4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        breathe: {
+                            '0%, 100%': { opacity: 0.5, transform: 'scale(1)' },
+                            '50%': { opacity: 0.8, transform: 'scale(1.05)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+            --neon-glow: 0 0 20px rgba(207, 186, 255, 0.2);
+        }
+
+        body {
+            background-color: #050505;
+            color: #ececec;
+            overflow: hidden; /* Lock scroll for app-like feel */
+        }
+
+        /* Noise Texture */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        .glass-card {
+            background: rgba(20, 20, 25, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #cfbaff;
+            cursor: pointer;
+            margin-top: -5px; 
+            box-shadow: 0 0 10px rgba(207, 186, 255, 0.8);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #fff 0%, #cfbaff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center p-4 md:p-6 text-gray-200">
+
+    <div class="bg-orb w-[500px] h-[500px] bg-purple-900/30 top-[-10%] left-[-10%] animate-blob"></div>
+    <div class="bg-orb w-[400px] h-[400px] bg-blue-900/30 bottom-[-10%] right-[-10%] animate-blob" style="animation-delay: 2s;"></div>
+    
+    <div class="w-full max-w-[1500px] h-full grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10 py-4">
+
+        <div class="lg:col-span-3 flex flex-col gap-6 h-full">
+            
+            <div class="glass-card rounded-3xl p-6 relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="font-mono text-xs tracking-[0.3em] text-gray-500 uppercase mb-1">Ether OS v2.0</h1>
+                        <div class="text-2xl font-bold text-white flex items-center gap-2">
+                            Locked In
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        </div>
+                    </div>
+                    <button onclick="toggleFullscreen()" class="text-gray-500 hover:text-white transition"><i class="ri-fullscreen-line"></i></button>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Daily Streak</span>
+                    <div class="flex items-center gap-2">
+                        <span id="streak-count" class="text-xl font-mono font-bold text-yellow-200">0</span>
+                        <i class="ri-fire-fill text-orange-500 animate-pulse"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-3xl p-6 flex-1 flex flex-col justify-center relative min-h-[180px]">
+                <i class="ri-double-quotes-l text-4xl text-purple-500/10 absolute top-4 left-4"></i>
+                <div id="quote-container" class="relative z-10 transition-opacity duration-500">
+                    <p id="quote-text" class="text-lg font-medium leading-relaxed text-gray-200">"Loading neural pathways..."</p>
+                    <p id="quote-author" class="text-xs font-mono text-purple-300 mt-4 text-right opacity-70">-- SYSTEM</p>
+                </div>
+                <div class="absolute bottom-4 right-4 flex gap-3">
+                    <button onclick="copyQuote()" class="text-gray-600 hover:text-purple-400 transition" title="Copy to clipboard"><i class="ri-file-copy-line"></i></button>
+                    <button onclick="forceNewQuote()" class="text-gray-600 hover:text-white transition" title="New Quote"><i class="ri-refresh-line"></i></button>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-3xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold flex items-center gap-2"><i class="ri-headphone-fill text-purple-400"></i> Sonic Field</h3>
+                    <div class="text-[10px] font-mono text-gray-500 bg-white/5 px-2 py-0.5 rounded">BROWN NOISE</div>
+                </div>
+                
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-4">
+                        <button id="sound-toggle" onclick="toggleSound()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition border border-white/10 text-gray-400">
+                            <i class="ri-play-fill" id="sound-icon"></i>
+                        </button>
+                        <div class="flex-1">
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5" class="w-full" oninput="adjustVolume(this.value)">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-500 text-center">Neural masking frequency active</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-6 flex flex-col h-full relative">
+            <div class="glass-card rounded-[3rem] h-full relative flex flex-col items-center justify-center p-8 overflow-hidden border border-white/10 shadow-2xl">
+                
+                <div id="core-glow" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[80px] transition-all duration-1000"></div>
+
+                <div class="flex gap-1 bg-black/40 p-1.5 rounded-full backdrop-blur-md border border-white/10 absolute top-8 z-20">
+                    <button onclick="setTimerMode(25)" class="mode-btn active-mode px-6 py-2 rounded-full text-xs font-bold tracking-widest transition-all text-white bg-white/10">FOCUS</button>
+                    <button onclick="setTimerMode(5)" class="mode-btn px-6 py-2 rounded-full text-xs font-bold tracking-widest transition-all text-gray-500 hover:text-white">SHORT</button>
+                    <button onclick="setTimerMode(15)" class="mode-btn px-6 py-2 rounded-full text-xs font-bold tracking-widest transition-all text-gray-500 hover:text-white">LONG</button>
+                </div>
+
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="group relative">
+                        <div id="timer-display" class="font-mono text-[9rem] md:text-[11rem] leading-none font-bold tracking-tighter text-white select-none tabular-nums transition-colors duration-300">
+                            25:00
+                        </div>
+                        
+                        <div class="absolute -right-8 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <button onclick="adjustTime(1)" class="w-8 h-8 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"><i class="ri-add-line"></i></button>
+                            <button onclick="adjustTime(-1)" class="w-8 h-8 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"><i class="ri-subtract-line"></i></button>
+                        </div>
+                    </div>
+
+                    <div id="timer-status" class="text-sm font-mono tracking-[0.5em] text-purple-300/50 uppercase mt-4 mb-12">System Ready</div>
+                    
+                    <div class="flex items-center gap-4">
+                        <button id="main-btn" onclick="toggleTimer()" class="h-16 px-10 bg-white text-black rounded-full font-bold text-lg hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center gap-2">
+                            <i class="ri-play-fill" id="play-icon"></i> <span id="btn-text">INITIALIZE</span>
+                        </button>
+                        <button onclick="resetTimer()" class="h-16 w-16 rounded-full border border-white/20 text-gray-400 hover:text-white hover:border-white hover:bg-white/5 transition flex items-center justify-center">
+                            <i class="ri-restart-line text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-10 left-0 w-full px-20 flex justify-between items-end h-10 opacity-30 gap-1 pointer-events-none">
+                    <div class="w-full bg-white/20 h-2 rounded-full animate-pulse"></div>
+                    <div class="w-full bg-white/20 h-4 rounded-full animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-full bg-white/20 h-6 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                    <div class="w-full bg-white/20 h-3 rounded-full animate-pulse" style="animation-delay: 0.3s"></div>
+                    <div class="w-full bg-white/20 h-5 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 flex flex-col gap-6 h-full">
+            
+            <div class="glass-card rounded-3xl p-6 flex flex-col h-[55%]">
+                <h2 class="font-mono text-xs uppercase tracking-widest text-gray-400 mb-4 border-b border-white/10 pb-2">Mission Log</h2>
+                
+                <div class="relative mb-4 group">
+                    <input type="text" id="task-input" placeholder="Enter new directive..." autocomplete="off"
+                        class="w-full bg-white/5 rounded-xl border border-transparent py-3 pl-10 pr-4 text-sm focus:border-purple-400/50 focus:bg-white/10 focus:outline-none transition-all placeholder-gray-600 text-gray-200">
+                    <i class="ri-add-line absolute left-3 top-3 text-gray-500"></i>
+                </div>
+
+                <div class="flex-1 overflow-y-auto pr-1 space-y-2" id="task-list">
+                    </div>
+            </div>
+
+            <div class="glass-card rounded-3xl p-0 flex flex-col h-[45%] overflow-hidden border-t-4 border-t-purple-500/50">
+                <div class="bg-black/30 p-2 px-4 flex items-center justify-between">
+                    <span class="text-[10px] font-mono text-gray-500">brain_buffer.txt</span>
+                    <button onclick="clearBrainDump()" class="text-[10px] text-red-400 hover:text-red-300">CLEAR</button>
+                </div>
+                <textarea id="brain-dump" class="flex-1 w-full bg-transparent p-4 text-sm font-mono text-gray-300 resize-none focus:outline-none placeholder-gray-700 leading-relaxed" placeholder="> Dump random thoughts here to clear RAM..."></textarea>
+            </div>
+        </div>
+
+    </div>
+
+    <audio id="bg-audio" loop preload="auto">
+        <source src="https://upload.wikimedia.org/wikipedia/commons/e/e6/Brown_noise.ogg" type="audio/ogg">
+    </audio>
+
+    <script>
+        // --- 1. ROBUST QUOTE ENGINE ---
+        const staticQuotes = [
+            { t: "The only way to do great work is to love what you do.", a: "Steve Jobs" },
+            { t: "It always seems impossible until it is done.", a: "Nelson Mandela" },
+            { t: "Don't watch the clock; do what it does. Keep going.", a: "Sam Levenson" },
+            { t: "The secret of getting ahead is getting started.", a: "Mark Twain" },
+            { t: "Focus is about saying no.", a: "Steve Jobs" },
+            { t: "Your time is limited, don't waste it living someone else's life.", a: "Steve Jobs" },
+            { t: "Energy flows where attention goes.", a: "Tony Robbins" },
+            { t: "Simplicity is the ultimate sophistication.", a: "Leonardo da Vinci" },
+            { t: "Productivity is being able to do things that you were never able to do before.", a: "Franz Kafka" },
+            { t: "Amateurs sit and wait for inspiration, the rest of us just get up and go to work.", a: "Stephen King" },
+            { t: "Action is the foundational key to all success.", a: "Pablo Picasso" },
+            { t: "What you do today can improve all your tomorrows.", a: "Ralph Marston" },
+            { t: "Determine never to be idle.", a: "Thomas Jefferson" },
+            { t: "Make each day your masterpiece.", a: "John Wooden" },
+            { t: "Someday is not a day of the week.", a: "Unknown" },
+            { t: "Discipline is choosing between what you want now and what you want most.", a: "Abraham Lincoln" }
+        ];
+
+        let lastQuoteIndex = -1;
+
+        async function forceNewQuote() {
+            const container = document.getElementById('quote-container');
+            const textEl = document.getElementById('quote-text');
+            const authorEl = document.getElementById('quote-author');
+
+            // Animate Out
+            textEl.style.opacity = 0;
+            authorEl.style.opacity = 0;
+
+            setTimeout(async () => {
+                let quote = { t: "", a: "" };
+                
+                // 50% chance to fetch API, 50% chance (or fallback) to use local
+                // This reduces API limits and ensures variety
+                if (Math.random() > 0.5) {
+                    try {
+                        const res = await fetch('https://api.quotable.io/random?tags=inspirational,wisdom');
+                        if (!res.ok) throw new Error('API Fail');
+                        const data = await res.json();
+                        quote = { t: data.content, a: data.author };
+                    } catch (e) {
+                        quote = getLocalQuote();
+                    }
+                } else {
+                    quote = getLocalQuote();
+                }
+
+                // Update DOM
+                textEl.innerText = `"${quote.t}"`;
+                authorEl.innerText = `-- ${quote.a}`;
+                
+                // Animate In
+                textEl.style.opacity = 1;
+                authorEl.style.opacity = 1;
+            }, 300);
+        }
+
+        function getLocalQuote() {
+            let index;
+            // Prevent duplicate quotes
+            do {
+                index = Math.floor(Math.random() * staticQuotes.length);
+            } while (index === lastQuoteIndex && staticQuotes.length > 1);
+            
+            lastQuoteIndex = index;
+            return staticQuotes[index];
+        }
+
+        function copyQuote() {
+            const text = document.getElementById('quote-text').innerText;
+            navigator.clipboard.writeText(text);
+            const btn = event.currentTarget;
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="ri-check-line text-green-400"></i>';
+            setTimeout(() => btn.innerHTML = original, 1000);
+        }
+
+        // Initialize Quote
+        forceNewQuote();
+        setInterval(forceNewQuote, 300000); // New quote every 5 mins
+
+        // --- 2. ADVANCED TIMER ENGINE ---
+        let timerInterval;
+        let totalSeconds = 25 * 60;
+        let initialSeconds = 25 * 60;
+        let isRunning = false;
+        let streak = parseInt(localStorage.getItem('etherStreak')) || 0;
+        document.getElementById('streak-count').innerText = streak;
+
+        const display = document.getElementById('timer-display');
+        const status = document.getElementById('timer-status');
+        const mainBtn = document.getElementById('main-btn');
+        const btnText = document.getElementById('btn-text');
+        const playIcon = document.getElementById('play-icon');
+
+        function updateDisplay() {
+            const m = Math.floor(Math.abs(totalSeconds) / 60);
+            const s = Math.abs(totalSeconds) % 60;
+            display.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+            document.title = `${display.innerText} // Locked In`;
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                // Pause
+                clearInterval(timerInterval);
+                isRunning = false;
+                status.innerText = "SYSTEM PAUSED";
+                btnText.innerText = "RESUME";
+                playIcon.className = "ri-play-fill";
+                mainBtn.classList.remove('bg-purple-200');
+                display.classList.remove('text-purple-300', 'animate-pulse');
+            } else {
+                // Play
+                isRunning = true;
+                status.innerText = "FOCUS SEQUENCE ACTIVE";
+                btnText.innerText = "PAUSE";
+                playIcon.className = "ri-pause-fill";
+                mainBtn.classList.add('bg-purple-200');
+                display.classList.add('text-purple-300');
+                
+                // Ensure audio plays if enabled (browser requirement)
+                if(!document.getElementById('bg-audio').paused) {
+                    document.getElementById('bg-audio').play();
+                }
+
+                timerInterval = setInterval(() => {
+                    if (totalSeconds > 0) {
+                        totalSeconds--;
+                        updateDisplay();
+                    } else {
+                        completeSession();
+                    }
+                }, 1000);
+            }
+        }
+
+        function completeSession() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            status.innerText = "SEQUENCE COMPLETE";
+            btnText.innerText = "START NEW";
+            playIcon.className = "ri-restart-line";
+            
+            // Rewards
+            streak++;
+            localStorage.setItem('etherStreak', streak);
+            document.getElementById('streak-count').innerText = streak;
+            
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 }, colors: ['#cfbaff', '#ffffff'] });
+            
+            // Reset logic ready
+            totalSeconds = initialSeconds;
+            display.classList.remove('text-purple-300');
+            display.classList.add('text-green-300');
+            
+            // Sound notification
+            const bell = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3');
+            bell.volume = 0.5;
+            bell.play();
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            totalSeconds = initialSeconds;
+            updateDisplay();
+            status.innerText = "SYSTEM READY";
+            btnText.innerText = "INITIALIZE";
+            playIcon.className = "ri-play-fill";
+            display.classList.remove('text-purple-300', 'text-green-300', 'animate-pulse');
+            mainBtn.classList.remove('bg-purple-200');
+        }
+
+        function setTimerMode(minutes) {
+            // Visual update for buttons
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.remove('text-white', 'bg-white/10');
+                b.classList.add('text-gray-500');
+            });
+            event.target.classList.remove('text-gray-500');
+            event.target.classList.add('text-white', 'bg-white/10');
+
+            initialSeconds = minutes * 60;
+            totalSeconds = initialSeconds;
+            resetTimer();
+        }
+
+        function adjustTime(amount) {
+            // Add or remove minutes
+            totalSeconds += (amount * 60);
+            if (totalSeconds < 0) totalSeconds = 0;
+            initialSeconds = totalSeconds; // Update the "reset point" to this new time
+            updateDisplay();
+        }
+
+        // --- 3. SOUND ENGINE ---
+        const audio = document.getElementById('bg-audio');
+        const volumeSlider = document.getElementById('volume-slider');
+        const soundIcon = document.getElementById('sound-icon');
+        const soundToggle = document.getElementById('sound-toggle');
+        let isMuted = true;
+
+        function toggleSound() {
+            if (audio.paused) {
+                audio.volume = volumeSlider.value;
+                audio.play();
+                soundIcon.className = "ri-pause-fill";
+                soundToggle.classList.add('bg-white/20', 'text-white', 'border-purple-400');
+                soundToggle.classList.remove('text-gray-400');
+            } else {
+                audio.pause();
+                soundIcon.className = "ri-play-fill";
+                soundToggle.classList.remove('bg-white/20', 'text-white', 'border-purple-400');
+                soundToggle.classList.add('text-gray-400');
+            }
+        }
+
+        function adjustVolume(val) {
+            audio.volume = val;
+            if(val > 0 && audio.paused) {
+                 // Optional: Auto play if sliding volume up
+            }
+        }
+
+        // --- 4. TASK MANAGER ---
+        const taskInput = document.getElementById('task-input');
+        const taskList = document.getElementById('task-list');
+        let tasks = JSON.parse(localStorage.getItem('etherTasksV2')) || [];
+
+        function saveTasks() {
+            localStorage.setItem('etherTasksV2', JSON.stringify(tasks));
+            renderTasks();
+        }
+
+        function renderTasks() {
+            taskList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const div = document.createElement('div');
+                div.className = `group flex items-center gap-3 p-3 rounded-xl transition-all border border-transparent ${task.done ? 'bg-white/5 opacity-50' : 'bg-white/5 hover:border-white/20 hover:bg-white/10'}`;
+                
+                div.innerHTML = `
+                    <button onclick="toggleTask(${index})" class="w-5 h-5 rounded border ${task.done ? 'bg-green-500/50 border-green-500' : 'border-gray-500 hover:border-purple-400'} flex items-center justify-center transition-colors">
+                        ${task.done ? '<i class="ri-check-line text-white text-xs"></i>' : ''}
+                    </button>
+                    <span class="flex-1 text-sm ${task.done ? 'line-through text-gray-500' : 'text-gray-200'}">${task.text}</span>
+                    <button onclick="deleteTask(${index})" class="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition"><i class="ri-delete-bin-line"></i></button>
+                `;
+                taskList.appendChild(div);
+            });
+        }
+
+        function toggleTask(i) {
+            tasks[i].done = !tasks[i].done;
+            if(tasks[i].done) confetti({ particleCount: 30, spread: 40, origin: { x: 0.8, y: 0.5 }, colors: ['#a7f3d0'] });
+            saveTasks();
+        }
+        
+        function deleteTask(i) {
+            tasks.splice(i, 1);
+            saveTasks();
+        }
+
+        taskInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && taskInput.value.trim()) {
+                tasks.unshift({ text: taskInput.value.trim(), done: false });
+                taskInput.value = '';
+                saveTasks();
+            }
+        });
+        
+        renderTasks();
+
+        // --- 5. BRAIN DUMP ---
+        const dump = document.getElementById('brain-dump');
+        dump.value = localStorage.getItem('etherDumpV2') || '';
+        dump.addEventListener('input', () => localStorage.setItem('etherDumpV2', dump.value));
+        function clearBrainDump() {
+            if(confirm('Clear the neural buffer?')) {
+                dump.value = '';
+                localStorage.setItem('etherDumpV2', '');
+            }
+        }
+
+        // --- 6. UTILS ---
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

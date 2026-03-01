@@ -1,0 +1,2549 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCAD - AutoCAD Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; user-select: none; }
+        canvas { cursor: crosshair; }
+        .tool-btn.active { background-color: #2563eb !important; color: white !important; }
+        .tool-btn:hover { background-color: #374151; color: white; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        .dropdown { display: none; }
+        .dropdown.show { display: block; }
+        .menu-item:hover > .dropdown { display: block; }
+        .color-swatch { width: 16px; height: 16px; border: 1px solid #555; cursor: pointer; }
+        .color-swatch:hover { border-color: white; transform: scale(1.2); }
+        #command-input { caret-color: #0f0; }
+        .layer-item:hover { background-color: #374151; }
+        .layer-item.active { background-color: #1e3a5f; }
+        .modal-overlay { background: rgba(0,0,0,0.6); }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col h-screen">
+
+    <!-- Top Menu Bar -->
+    <div class="bg-gray-800 border-b border-gray-700 flex items-center text-sm h-8 px-1 z-50">
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            File
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="newDrawing()">New <span class="float-right text-gray-400 text-xs">Ctrl+N</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="saveDrawing()">Save <span class="float-right text-gray-400 text-xs">Ctrl+S</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="loadDrawing()">Open <span class="float-right text-gray-400 text-xs">Ctrl+O</span></div>
+                <div class="border-t border-gray-600"></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="exportSVG()">Export SVG</div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="exportPNG()">Export PNG</div>
+                <div class="border-t border-gray-600"></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="printDrawing()">Print <span class="float-right text-gray-400 text-xs">Ctrl+P</span></div>
+            </div>
+        </div>
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            Edit
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="undo()">Undo <span class="float-right text-gray-400 text-xs">Ctrl+Z</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="redo()">Redo <span class="float-right text-gray-400 text-xs">Ctrl+Y</span></div>
+                <div class="border-t border-gray-600"></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="deleteSelected()">Delete <span class="float-right text-gray-400 text-xs">Del</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="selectAll()">Select All <span class="float-right text-gray-400 text-xs">Ctrl+A</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="copySelected()">Copy <span class="float-right text-gray-400 text-xs">Ctrl+C</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="pasteClipboard()">Paste <span class="float-right text-gray-400 text-xs">Ctrl+V</span></div>
+            </div>
+        </div>
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            View
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="zoomExtents()">Zoom Extents</div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="zoomIn()">Zoom In <span class="float-right text-gray-400 text-xs">+</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="zoomOut()">Zoom Out <span class="float-right text-gray-400 text-xs">-</span></div>
+                <div class="border-t border-gray-600"></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="toggleGrid()">Toggle Grid <span class="float-right text-gray-400 text-xs">G</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="toggleSnap()">Toggle Snap <span class="float-right text-gray-400 text-xs">F9</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="toggleOrtho()">Toggle Ortho <span class="float-right text-gray-400 text-xs">F8</span></div>
+            </div>
+        </div>
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            Draw
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('line')">Line <span class="float-right text-gray-400 text-xs">L</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('polyline')">Polyline <span class="float-right text-gray-400 text-xs">PL</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('rectangle')">Rectangle <span class="float-right text-gray-400 text-xs">REC</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('circle')">Circle <span class="float-right text-gray-400 text-xs">C</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('arc')">Arc <span class="float-right text-gray-400 text-xs">A</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('ellipse')">Ellipse <span class="float-right text-gray-400 text-xs">EL</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('polygon')">Polygon <span class="float-right text-gray-400 text-xs">POL</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('spline')">Spline <span class="float-right text-gray-400 text-xs">SPL</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('text')">Text <span class="float-right text-gray-400 text-xs">T</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('dimension')">Dimension <span class="float-right text-gray-400 text-xs">DIM</span></div>
+            </div>
+        </div>
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            Modify
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('move')">Move <span class="float-right text-gray-400 text-xs">M</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('rotate')">Rotate <span class="float-right text-gray-400 text-xs">RO</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('scale')">Scale <span class="float-right text-gray-400 text-xs">SC</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('mirror')">Mirror <span class="float-right text-gray-400 text-xs">MI</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('offset')">Offset <span class="float-right text-gray-400 text-xs">O</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('trim')">Trim <span class="float-right text-gray-400 text-xs">TR</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('extend')">Extend <span class="float-right text-gray-400 text-xs">EX</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('fillet')">Fillet <span class="float-right text-gray-400 text-xs">F</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('chamfer')">Chamfer <span class="float-right text-gray-400 text-xs">CHA</span></div>
+            </div>
+        </div>
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            Tools
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('measure')">Measure <span class="float-right text-gray-400 text-xs">DI</span></div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="setTool('area')">Area</div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="showLayerManager()">Layer Manager</div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="showProperties()">Properties</div>
+            </div>
+        </div>
+        <div class="menu-item relative px-3 py-1 hover:bg-gray-700 cursor-pointer">
+            Help
+            <div class="dropdown absolute top-full left-0 bg-gray-800 border border-gray-600 shadow-xl min-w-48 z-50">
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="showHelp()">Keyboard Shortcuts</div>
+                <div class="px-4 py-2 hover:bg-blue-600 cursor-pointer" onclick="showAbout()">About WebCAD</div>
+            </div>
+        </div>
+        <div class="ml-auto flex items-center gap-2 text-xs text-gray-400 pr-2">
+            <span>WebCAD v2.0</span>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="bg-gray-800 border-b border-gray-700 flex items-center gap-1 px-2 py-1 flex-wrap">
+        <!-- Draw tools -->
+        <div class="flex items-center gap-1 border-r border-gray-600 pr-2 mr-1">
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="select" onclick="setTool('select')" title="Select (Esc)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+                Select
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="line" onclick="setTool('line')" title="Line (L)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+                Line
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="polyline" onclick="setTool('polyline')" title="Polyline (PL)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,18 10,8 16,14 20,4"/></svg>
+                PLine
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="rectangle" onclick="setTool('rectangle')" title="Rectangle (REC)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14"/></svg>
+                Rect
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="circle" onclick="setTool('circle')" title="Circle (C)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                Circle
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="arc" onclick="setTool('arc')" title="Arc (A)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19 A 12 12 0 0 1 19 5"/></svg>
+                Arc
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="ellipse" onclick="setTool('ellipse')" title="Ellipse (EL)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="6"/></svg>
+                Ellipse
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="polygon" onclick="setTool('polygon')" title="Polygon (POL)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 22,8.5 19,20 5,20 2,8.5"/></svg>
+                Polygon
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="spline" onclick="setTool('spline')" title="Spline (SPL)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18 Q 8 4 12 12 Q 16 20 21 6"/></svg>
+                Spline
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="text" onclick="setTool('text')" title="Text (T)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                Text
+            </button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700 flex items-center gap-1" data-tool="dimension" onclick="setTool('dimension')" title="Dimension (DIM)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="16" x2="20" y2="16"/><line x1="4" y1="12" x2="4" y2="20"/><line x1="20" y1="12" x2="20" y2="20"/><path d="M7 16l-3-2m0 4l3-2m13-2l-3 2m3 2l-3-2"/></svg>
+                Dim
+            </button>
+        </div>
+
+        <!-- Modify tools -->
+        <div class="flex items-center gap-1 border-r border-gray-600 pr-2 mr-1">
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="move" onclick="setTool('move')" title="Move (M)">Move</button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="rotate" onclick="setTool('rotate')" title="Rotate (RO)">Rotate</button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="scale" onclick="setTool('scale')" title="Scale (SC)">Scale</button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="mirror" onclick="setTool('mirror')" title="Mirror (MI)">Mirror</button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="offset" onclick="setTool('offset')" title="Offset (O)">Offset</button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="trim" onclick="setTool('trim')" title="Trim (TR)">Trim</button>
+            <button class="tool-btn px-2 py-1 rounded text-xs bg-gray-700" data-tool="measure" onclick="setTool('measure')" title="Measure (DI)">Measure</button>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex items-center gap-1">
+            <button class="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600" onclick="undo()" title="Undo (Ctrl+Z)">↩ Undo</button>
+            <button class="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600" onclick="redo()" title="Redo (Ctrl+Y)">↪ Redo</button>
+            <button class="px-2 py-1 rounded text-xs bg-red-700 hover:bg-red-600" onclick="deleteSelected()" title="Delete (Del)">🗑 Delete</button>
+        </div>
+
+        <!-- Properties -->
+        <div class="ml-auto flex items-center gap-2">
+            <label class="text-xs text-gray-400">Color:</label>
+            <input type="color" id="colorPicker" value="#00ff00" class="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" onchange="currentColor=this.value">
+            <label class="text-xs text-gray-400">Width:</label>
+            <select id="lineWidth" class="bg-gray-700 text-xs rounded px-1 py-0.5 border border-gray-600" onchange="currentLineWidth=parseFloat(this.value)">
+                <option value="0.5">0.5</option>
+                <option value="1" selected>1</option>
+                <option value="1.5">1.5</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="5">5</option>
+            </select>
+            <label class="text-xs text-gray-400">Style:</label>
+            <select id="lineStyle" class="bg-gray-700 text-xs rounded px-1 py-0.5 border border-gray-600" onchange="currentLineStyle=this.value">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+                <option value="dashdot">Dash-Dot</option>
+            </select>
+            <label class="text-xs text-gray-400">Layer:</label>
+            <select id="layerSelect" class="bg-gray-700 text-xs rounded px-1 py-0.5 border border-gray-600 min-w-20" onchange="currentLayer=this.value">
+                <option value="0">0</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Main content area -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Canvas area -->
+        <div class="flex-1 relative bg-gray-950" id="canvasContainer">
+            <canvas id="canvas"></canvas>
+
+            <!-- Coordinate display overlay -->
+            <div class="absolute top-2 right-2 bg-gray-800 bg-opacity-90 rounded px-3 py-1 text-xs font-mono border border-gray-600">
+                <span id="coordDisplay">X: 0.00 Y: 0.00</span>
+            </div>
+
+            <!-- Zoom display -->
+            <div class="absolute top-2 left-2 bg-gray-800 bg-opacity-90 rounded px-3 py-1 text-xs border border-gray-600">
+                Zoom: <span id="zoomDisplay">100%</span>
+            </div>
+
+            <!-- Snap point indicator -->
+            <div id="snapIndicator" class="absolute hidden pointer-events-none">
+                <div class="w-3 h-3 border-2 border-yellow-400 transform -translate-x-1/2 -translate-y-1/2" id="snapShape"></div>
+            </div>
+        </div>
+
+        <!-- Right panel (Properties/Layers) -->
+        <div class="w-56 bg-gray-800 border-l border-gray-700 flex flex-col text-xs overflow-hidden" id="rightPanel">
+            <!-- Properties panel -->
+            <div class="border-b border-gray-700">
+                <div class="px-3 py-2 bg-gray-750 font-semibold text-gray-300 flex items-center justify-between cursor-pointer" onclick="togglePanel('propertiesContent')">
+                    Properties
+                    <span class="text-gray-500">▼</span>
+                </div>
+                <div id="propertiesContent" class="p-2 space-y-1">
+                    <div class="text-gray-500 italic" id="propDisplay">No selection</div>
+                </div>
+            </div>
+
+            <!-- Layers panel -->
+            <div class="flex-1 flex flex-col overflow-hidden border-b border-gray-700">
+                <div class="px-3 py-2 bg-gray-750 font-semibold text-gray-300 flex items-center justify-between">
+                    Layers
+                    <div class="flex gap-1">
+                        <button class="px-1 hover:bg-gray-600 rounded" onclick="addLayer()" title="Add Layer">+</button>
+                        <button class="px-1 hover:bg-gray-600 rounded" onclick="deleteLayer()" title="Delete Layer">−</button>
+                    </div>
+                </div>
+                <div id="layersList" class="flex-1 overflow-y-auto">
+                </div>
+            </div>
+
+            <!-- Entity list -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <div class="px-3 py-2 bg-gray-750 font-semibold text-gray-300 flex items-center justify-between cursor-pointer" onclick="togglePanel('entityContent')">
+                    Entities (<span id="entityCount">0</span>)
+                    <span class="text-gray-500">▼</span>
+                </div>
+                <div id="entityContent" class="flex-1 overflow-y-auto">
+                    <div class="text-gray-500 italic p-2">No entities</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status bar / Command line -->
+    <div class="bg-gray-800 border-t border-gray-700">
+        <!-- Command history -->
+        <div id="commandHistory" class="h-16 overflow-y-auto px-3 py-1 text-xs font-mono text-gray-400 border-b border-gray-700 bg-gray-900">
+            <div>Welcome to WebCAD. Type a command or select a tool.</div>
+            <div>Type HELP for keyboard shortcuts.</div>
+        </div>
+        <!-- Command input -->
+        <div class="flex items-center h-7 px-3 gap-2">
+            <span class="text-xs text-gray-400 font-mono">Command:</span>
+            <input type="text" id="command-input" class="flex-1 bg-transparent text-xs font-mono text-green-400 outline-none" placeholder="Type command..." autocomplete="off">
+            <div class="flex items-center gap-3 text-xs border-l border-gray-600 pl-3 ml-2">
+                <button id="snapBtn" class="px-2 py-0.5 rounded hover:bg-gray-700" onclick="toggleSnap()" title="Snap (F9)">
+                    SNAP: <span id="snapStatus" class="text-green-400">ON</span>
+                </button>
+                <button id="gridBtn" class="px-2 py-0.5 rounded hover:bg-gray-700" onclick="toggleGrid()" title="Grid (G)">
+                    GRID: <span id="gridStatus" class="text-green-400">ON</span>
+                </button>
+                <button id="orthoBtn" class="px-2 py-0.5 rounded hover:bg-gray-700" onclick="toggleOrtho()" title="Ortho (F8)">
+                    ORTHO: <span id="orthoStatus" class="text-gray-500">OFF</span>
+                </button>
+                <button id="osnapBtn" class="px-2 py-0.5 rounded hover:bg-gray-700" onclick="toggleOsnap()" title="Object Snap (F3)">
+                    OSNAP: <span id="osnapStatus" class="text-green-400">ON</span>
+                </button>
+                <span class="text-gray-500" id="toolStatus">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl max-w-lg w-full mx-4 max-h-96 overflow-y-auto">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600">
+                <h2 class="font-semibold">Keyboard Shortcuts</h2>
+                <button onclick="document.getElementById('helpModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <div class="p-4 text-sm space-y-1">
+                <div class="grid grid-cols-2 gap-1">
+                    <div class="text-gray-400">L</div><div>Line</div>
+                    <div class="text-gray-400">PL</div><div>Polyline</div>
+                    <div class="text-gray-400">REC</div><div>Rectangle</div>
+                    <div class="text-gray-400">C</div><div>Circle</div>
+                    <div class="text-gray-400">A</div><div>Arc</div>
+                    <div class="text-gray-400">EL</div><div>Ellipse</div>
+                    <div class="text-gray-400">POL</div><div>Polygon</div>
+                    <div class="text-gray-400">SPL</div><div>Spline</div>
+                    <div class="text-gray-400">T</div><div>Text</div>
+                    <div class="text-gray-400">DIM</div><div>Dimension</div>
+                    <div class="text-gray-400">M</div><div>Move</div>
+                    <div class="text-gray-400">RO</div><div>Rotate</div>
+                    <div class="text-gray-400">SC</div><div>Scale</div>
+                    <div class="text-gray-400">MI</div><div>Mirror</div>
+                    <div class="text-gray-400">O</div><div>Offset</div>
+                    <div class="text-gray-400">TR</div><div>Trim</div>
+                    <div class="text-gray-400">DI</div><div>Measure Distance</div>
+                    <div class="text-gray-400">Esc</div><div>Cancel / Select tool</div>
+                    <div class="text-gray-400">Del</div><div>Delete selected</div>
+                    <div class="text-gray-400">Ctrl+Z</div><div>Undo</div>
+                    <div class="text-gray-400">Ctrl+Y</div><div>Redo</div>
+                    <div class="text-gray-400">Ctrl+S</div><div>Save</div>
+                    <div class="text-gray-400">Ctrl+A</div><div>Select All</div>
+                    <div class="text-gray-400">F3</div><div>Toggle Object Snap</div>
+                    <div class="text-gray-400">F8</div><div>Toggle Ortho</div>
+                    <div class="text-gray-400">F9</div><div>Toggle Snap</div>
+                    <div class="text-gray-400">G</div><div>Toggle Grid</div>
+                    <div class="text-gray-400">Scroll</div><div>Zoom In/Out</div>
+                    <div class="text-gray-400">Middle Drag</div><div>Pan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Text Input Modal -->
+    <div id="textModal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl max-w-sm w-full mx-4">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600">
+                <h2 class="font-semibold text-sm">Enter Text</h2>
+                <button onclick="cancelTextInput()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <input type="text" id="textInput" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Enter text...">
+                <div class="flex gap-2">
+                    <label class="text-xs text-gray-400">Size:</label>
+                    <input type="number" id="textSize" value="20" min="4" max="200" class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs">
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="cancelTextInput()" class="px-3 py-1 text-sm bg-gray-600 rounded hover:bg-gray-500">Cancel</button>
+                    <button onclick="confirmTextInput()" class="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-500">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Polygon Sides Modal -->
+    <div id="polygonModal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl max-w-xs w-full mx-4">
+            <div class="px-4 py-3 border-b border-gray-600">
+                <h2 class="font-semibold text-sm">Polygon Sides</h2>
+            </div>
+            <div class="p-4 space-y-3">
+                <input type="number" id="polygonSides" value="6" min="3" max="64" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm outline-none focus:border-blue-500">
+                <div class="flex justify-end gap-2">
+                    <button onclick="document.getElementById('polygonModal').classList.add('hidden');setTool('select')" class="px-3 py-1 text-sm bg-gray-600 rounded hover:bg-gray-500">Cancel</button>
+                    <button onclick="confirmPolygonSides()" class="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-500">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json,.webcad" class="hidden" onchange="handleFileLoad(event)">
+
+    <script>
+        // ==================== STATE ====================
+        let canvas, ctx;
+        let entities = [];
+        let selectedEntities = [];
+        let clipboard = [];
+        let undoStack = [];
+        let redoStack = [];
+        let currentTool = 'select';
+        let currentColor = '#00ff00';
+        let currentLineWidth = 1;
+        let currentLineStyle = 'solid';
+        let currentLayer = '0';
+
+        // View state
+        let panX = 0, panY = 0;
+        let zoom = 1;
+        let isPanning = false;
+        let panStartX, panStartY;
+        let lastPanX, lastPanY;
+
+        // Drawing state
+        let isDrawing = false;
+        let drawStart = null;
+        let drawPoints = [];
+        let mouseWorld = { x: 0, y: 0 };
+        let mouseScreen = { x: 0, y: 0 };
+        let snapPoint = null;
+        let tempEntity = null;
+        let polygonSides = 6;
+
+        // Settings
+        let showGrid = true;
+        let snapEnabled = true;
+        let orthoEnabled = false;
+        let osnapEnabled = true;
+        let gridSize = 25;
+        let snapSize = 5;
+
+        // Layers
+        let layers = [
+            { name: '0', color: '#ffffff', visible: true, locked: false },
+            { name: 'Dimensions', color: '#00ffff', visible: true, locked: false },
+            { name: 'Construction', color: '#888888', visible: true, locked: false },
+        ];
+
+        // Selection box
+        let selectionBox = null;
+
+        // Modify state
+        let modifyStep = 0;
+        let modifyBasePoint = null;
+
+        // ==================== INIT ====================
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            canvas.addEventListener('dblclick', onDoubleClick);
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            document.addEventListener('keydown', onKeyDown);
+            document.getElementById('command-input').addEventListener('keydown', onCommandKey);
+
+            updateLayersList();
+            updateLayerSelect();
+            centerView();
+            render();
+            logCommand('Ready. Type a command or select a tool from the toolbar.');
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            render();
+        }
+
+        function centerView() {
+            panX = canvas.width / 2;
+            panY = canvas.height / 2;
+        }
+
+        // ==================== COORDINATE TRANSFORMS ====================
+        function screenToWorld(sx, sy) {
+            return {
+                x: (sx - panX) / zoom,
+                y: -(sy - panY) / zoom
+            };
+        }
+
+        function worldToScreen(wx, wy) {
+            return {
+                x: wx * zoom + panX,
+                y: -wy * zoom + panY
+            };
+        }
+
+        // ==================== SNAP ====================
+        function getSnapPoint(wx, wy) {
+            // Object snap
+            if (osnapEnabled) {
+                let best = null, bestDist = 15 / zoom;
+                for (const e of entities) {
+                    const layer = layers.find(l => l.name === e.layer);
+                    if (layer && (!layer.visible || layer.locked)) continue;
+                    const pts = getEntitySnapPoints(e);
+                    for (const p of pts) {
+                        const d = Math.hypot(p.x - wx, p.y - wy);
+                        if (d < bestDist) {
+                            bestDist = d;
+                            best = { x: p.x, y: p.y, type: p.type };
+                        }
+                    }
+                }
+                if (best) return best;
+            }
+
+            // Grid snap
+            if (snapEnabled) {
+                const s = snapSize;
+                return {
+                    x: Math.round(wx / s) * s,
+                    y: Math.round(wy / s) * s,
+                    type: 'grid'
+                };
+            }
+
+            return { x: wx, y: wy, type: null };
+        }
+
+        function getEntitySnapPoints(e) {
+            const pts = [];
+            switch (e.type) {
+                case 'line':
+                    pts.push({ x: e.x1, y: e.y1, type: 'endpoint' });
+                    pts.push({ x: e.x2, y: e.y2, type: 'endpoint' });
+                    pts.push({ x: (e.x1 + e.x2) / 2, y: (e.y1 + e.y2) / 2, type: 'midpoint' });
+                    break;
+                case 'rectangle':
+                    pts.push({ x: e.x, y: e.y, type: 'endpoint' });
+                    pts.push({ x: e.x + e.w, y: e.y, type: 'endpoint' });
+                    pts.push({ x: e.x, y: e.y + e.h, type: 'endpoint' });
+                    pts.push({ x: e.x + e.w, y: e.y + e.h, type: 'endpoint' });
+                    pts.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, type: 'center' });
+                    pts.push({ x: e.x + e.w / 2, y: e.y, type: 'midpoint' });
+                    pts.push({ x: e.x + e.w / 2, y: e.y + e.h, type: 'midpoint' });
+                    pts.push({ x: e.x, y: e.y + e.h / 2, type: 'midpoint' });
+                    pts.push({ x: e.x + e.w, y: e.y + e.h / 2, type: 'midpoint' });
+                    break;
+                case 'circle':
+                    pts.push({ x: e.cx, y: e.cy, type: 'center' });
+                    pts.push({ x: e.cx + e.r, y: e.cy, type: 'quadrant' });
+                    pts.push({ x: e.cx - e.r, y: e.cy, type: 'quadrant' });
+                    pts.push({ x: e.cx, y: e.cy + e.r, type: 'quadrant' });
+                    pts.push({ x: e.cx, y: e.cy - e.r, type: 'quadrant' });
+                    break;
+                case 'ellipse':
+                    pts.push({ x: e.cx, y: e.cy, type: 'center' });
+                    break;
+                case 'arc':
+                    pts.push({ x: e.cx, y: e.cy, type: 'center' });
+                    pts.push({
+                        x: e.cx + e.r * Math.cos(e.startAngle),
+                        y: e.cy + e.r * Math.sin(e.startAngle),
+                        type: 'endpoint'
+                    });
+                    pts.push({
+                        x: e.cx + e.r * Math.cos(e.endAngle),
+                        y: e.cy + e.r * Math.sin(e.endAngle),
+                        type: 'endpoint'
+                    });
+                    break;
+                case 'polyline':
+                case 'spline':
+                    if (e.points) {
+                        for (const p of e.points) {
+                            pts.push({ x: p.x, y: p.y, type: 'endpoint' });
+                        }
+                        for (let i = 0; i < e.points.length - 1; i++) {
+                            pts.push({
+                                x: (e.points[i].x + e.points[i + 1].x) / 2,
+                                y: (e.points[i].y + e.points[i + 1].y) / 2,
+                                type: 'midpoint'
+                            });
+                        }
+                    }
+                    break;
+                case 'polygon':
+                    if (e.points) {
+                        for (const p of e.points) {
+                            pts.push({ x: p.x, y: p.y, type: 'endpoint' });
+                        }
+                        pts.push({ x: e.cx, y: e.cy, type: 'center' });
+                    }
+                    break;
+                case 'text':
+                    pts.push({ x: e.x, y: e.y, type: 'insertion' });
+                    break;
+                case 'dimension':
+                    pts.push({ x: e.x1, y: e.y1, type: 'endpoint' });
+                    pts.push({ x: e.x2, y: e.y2, type: 'endpoint' });
+                    break;
+            }
+            return pts;
+        }
+
+        function applyOrtho(start, end) {
+            if (!orthoEnabled || !start) return end;
+            const dx = Math.abs(end.x - start.x);
+            const dy = Math.abs(end.y - start.y);
+            if (dx > dy) {
+                return { x: end.x, y: start.y };
+            } else {
+                return { x: start.x, y: end.y };
+            }
+        }
+
+        // ==================== RENDERING ====================
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            if (showGrid) drawGrid();
+
+            // Draw origin
+            drawOrigin();
+
+            // Draw entities
+            for (const e of entities) {
+                const layer = layers.find(l => l.name === e.layer);
+                if (layer && !layer.visible) continue;
+                const isSelected = selectedEntities.includes(e);
+                drawEntity(e, isSelected);
+            }
+
+            // Draw temp entity
+            if (tempEntity) {
+                drawEntity(tempEntity, false, true);
+            }
+
+            // Draw selection box
+            if (selectionBox) {
+                drawSelectionBox();
+            }
+
+            // Draw snap indicator
+            if (snapPoint && snapPoint.type) {
+                drawSnapIndicator(snapPoint);
+            }
+
+            // Update displays
+            document.getElementById('coordDisplay').textContent =
+                `X: ${mouseWorld.x.toFixed(2)} Y: ${mouseWorld.y.toFixed(2)}`;
+            document.getElementById('zoomDisplay').textContent =
+                `${(zoom * 100).toFixed(0)}%`;
+            document.getElementById('entityCount').textContent = entities.length;
+
+            requestAnimationFrame(render);
+        }
+
+        function drawGrid() {
+            const gs = gridSize;
+            const startWorld = screenToWorld(0, canvas.height);
+            const endWorld = screenToWorld(canvas.width, 0);
+
+            const minX = Math.floor(startWorld.x / gs) * gs;
+            const maxX = Math.ceil(endWorld.x / gs) * gs;
+            const minY = Math.floor(startWorld.y / gs) * gs;
+            const maxY = Math.ceil(endWorld.y / gs) * gs;
+
+            ctx.strokeStyle = '#252540';
+            ctx.lineWidth = 0.5;
+
+            // Don't draw too many grid lines
+            const numLines = ((maxX - minX) / gs) * ((maxY - minY) / gs);
+            if (numLines > 10000) return;
+
+            ctx.beginPath();
+            for (let x = minX; x <= maxX; x += gs) {
+                const s = worldToScreen(x, 0);
+                ctx.moveTo(s.x, 0);
+                ctx.lineTo(s.x, canvas.height);
+            }
+            for (let y = minY; y <= maxY; y += gs) {
+                const s = worldToScreen(0, y);
+                ctx.moveTo(0, s.y);
+                ctx.lineTo(canvas.width, s.y);
+            }
+            ctx.stroke();
+        }
+
+        function drawOrigin() {
+            const o = worldToScreen(0, 0);
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(o.x, 0);
+            ctx.lineTo(o.x, canvas.height);
+            ctx.moveTo(0, o.y);
+            ctx.lineTo(canvas.width, o.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Origin marker
+            ctx.fillStyle = '#666';
+            ctx.font = '10px monospace';
+            ctx.fillText('0,0', o.x + 4, o.y - 4);
+        }
+
+        function setLineStyle(style) {
+            switch (style) {
+                case 'dashed': ctx.setLineDash([10, 5]); break;
+                case 'dotted': ctx.setLineDash([2, 4]); break;
+                case 'dashdot': ctx.setLineDash([10, 4, 2, 4]); break;
+                default: ctx.setLineDash([]);
+            }
+        }
+
+        function drawEntity(e, isSelected, isTemp) {
+            ctx.save();
+            const layer = layers.find(l => l.name === e.layer);
+            let color = e.color || (layer ? layer.color : '#ffffff');
+            if (isSelected) color = '#4488ff';
+            if (isTemp) { color = e.color || currentColor; ctx.globalAlpha = 0.7; }
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = (e.lineWidth || 1) * (isSelected ? 1.5 : 1);
+            setLineStyle(e.lineStyle || 'solid');
+
+            switch (e.type) {
+                case 'line': drawLine(e); break;
+                case 'rectangle': drawRectangle(e); break;
+                case 'circle': drawCircle(e); break;
+                case 'arc': drawArc(e); break;
+                case 'ellipse': drawEllipse(e); break;
+                case 'polyline': drawPolyline(e); break;
+                case 'polygon': drawPolygonEntity(e); break;
+                case 'spline': drawSpline(e); break;
+                case 'text': drawText(e); break;
+                case 'dimension': drawDimension(e); break;
+            }
+
+            // Draw selection handles
+            if (isSelected && !isTemp) {
+                drawSelectionHandles(e);
+            }
+
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        function drawLine(e) {
+            const p1 = worldToScreen(e.x1, e.y1);
+            const p2 = worldToScreen(e.x2, e.y2);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+
+        function drawRectangle(e) {
+            const p1 = worldToScreen(e.x, e.y);
+            const p2 = worldToScreen(e.x + e.w, e.y + e.h);
+            ctx.beginPath();
+            ctx.rect(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), Math.abs(p2.x - p1.x), Math.abs(p2.y - p1.y));
+            ctx.stroke();
+        }
+
+        function drawCircle(e) {
+            const c = worldToScreen(e.cx, e.cy);
+            const r = e.r * zoom;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function drawArc(e) {
+            const c = worldToScreen(e.cx, e.cy);
+            const r = e.r * zoom;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, r, -e.startAngle, -e.endAngle, true);
+            ctx.stroke();
+        }
+
+        function drawEllipse(e) {
+            const c = worldToScreen(e.cx, e.cy);
+            ctx.beginPath();
+            ctx.ellipse(c.x, c.y, e.rx * zoom, e.ry * zoom, -(e.rotation || 0), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function drawPolyline(e) {
+            if (!e.points || e.points.length < 2) return;
+            ctx.beginPath();
+            const p0 = worldToScreen(e.points[0].x, e.points[0].y);
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < e.points.length; i++) {
+                const p = worldToScreen(e.points[i].x, e.points[i].y);
+                ctx.lineTo(p.x, p.y);
+            }
+            if (e.closed) {
+                ctx.closePath();
+            }
+            ctx.stroke();
+        }
+
+        function drawPolygonEntity(e) {
+            if (!e.points || e.points.length < 3) return;
+            ctx.beginPath();
+            const p0 = worldToScreen(e.points[0].x, e.points[0].y);
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < e.points.length; i++) {
+                const p = worldToScreen(e.points[i].x, e.points[i].y);
+                ctx.lineTo(p.x, p.y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function drawSpline(e) {
+            if (!e.points || e.points.length < 2) return;
+            const screenPts = e.points.map(p => worldToScreen(p.x, p.y));
+            ctx.beginPath();
+            ctx.moveTo(screenPts[0].x, screenPts[0].y);
+
+            if (screenPts.length === 2) {
+                ctx.lineTo(screenPts[1].x, screenPts[1].y);
+            } else {
+                for (let i = 0; i < screenPts.length - 1; i++) {
+                    const cp1x = (screenPts[i].x + screenPts[Math.min(i + 1, screenPts.length - 1)].x) / 2;
+                    const cp1y = (screenPts[i].y + screenPts[Math.min(i + 1, screenPts.length - 1)].y) / 2;
+                    ctx.quadraticCurveTo(screenPts[i].x, screenPts[i].y, cp1x, cp1y);
+                }
+                const last = screenPts[screenPts.length - 1];
+                ctx.lineTo(last.x, last.y);
+            }
+            ctx.stroke();
+        }
+
+        function drawText(e) {
+            const p = worldToScreen(e.x, e.y);
+            const size = (e.size || 20) * zoom;
+            if (size < 2) return;
+            ctx.font = `${size}px Arial`;
+            ctx.fillText(e.text || '', p.x, p.y);
+        }
+
+        function drawDimension(e) {
+            const p1 = worldToScreen(e.x1, e.y1);
+            const p2 = worldToScreen(e.x2, e.y2);
+            const offset = 30;
+
+            const dx = e.x2 - e.x1;
+            const dy = e.y2 - e.y1;
+            const dist = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx);
+
+            // Perpendicular offset
+            const nx = -Math.sin(angle) * offset / zoom;
+            const ny = Math.cos(angle) * offset / zoom;
+
+            const dp1 = worldToScreen(e.x1 + nx, e.y1 + ny);
+            const dp2 = worldToScreen(e.x2 + nx, e.y2 + ny);
+
+            // Extension lines
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(dp1.x, dp1.y);
+            ctx.moveTo(p2.x, p2.y);
+            ctx.lineTo(dp2.x, dp2.y);
+            ctx.stroke();
+
+            // Dimension line
+            ctx.beginPath();
+            ctx.moveTo(dp1.x, dp1.y);
+            ctx.lineTo(dp2.x, dp2.y);
+            ctx.stroke();
+
+            // Arrows
+            const arrowSize = 8;
+            const screenAngle = Math.atan2(dp2.y - dp1.y, dp2.x - dp1.x);
+            drawArrow(dp1.x, dp1.y, screenAngle, arrowSize);
+            drawArrow(dp2.x, dp2.y, screenAngle + Math.PI, arrowSize);
+
+            // Text
+            const midX = (dp1.x + dp2.x) / 2;
+            const midY = (dp1.y + dp2.y) / 2;
+            ctx.save();
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(dist.toFixed(2), midX, midY - 4);
+            ctx.restore();
+        }
+
+        function drawArrow(x, y, angle, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - size * Math.cos(angle - 0.3), y - size * Math.sin(angle - 0.3));
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - size * Math.cos(angle + 0.3), y - size * Math.sin(angle + 0.3));
+            ctx.stroke();
+        }
+
+        function drawSelectionHandles(e) {
+            const pts = getEntitySnapPoints(e).filter(p => p.type === 'endpoint' || p.type === 'center' || p.type === 'insertion');
+            ctx.fillStyle = '#4488ff';
+            for (const p of pts) {
+                const s = worldToScreen(p.x, p.y);
+                ctx.fillRect(s.x - 3, s.y - 3, 6, 6);
+            }
+        }
+
+        function drawSnapIndicator(sp) {
+            const s = worldToScreen(sp.x, sp.y);
+            ctx.save();
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 1.5;
+            const sz = 6;
+
+            switch (sp.type) {
+                case 'endpoint':
+                    ctx.strokeRect(s.x - sz, s.y - sz, sz * 2, sz * 2);
+                    break;
+                case 'midpoint':
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, s.y - sz);
+                    ctx.lineTo(s.x + sz, s.y + sz);
+                    ctx.lineTo(s.x - sz, s.y + sz);
+                    ctx.closePath();
+                    ctx.stroke();
+                    break;
+                case 'center':
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, sz, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(s.x - sz, s.y);
+                    ctx.lineTo(s.x + sz, s.y);
+                    ctx.moveTo(s.x, s.y - sz);
+                    ctx.lineTo(s.x, s.y + sz);
+                    ctx.stroke();
+                    break;
+                case 'quadrant':
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, s.y - sz);
+                    ctx.lineTo(s.x + sz, s.y);
+                    ctx.lineTo(s.x, s.y + sz);
+                    ctx.lineTo(s.x - sz, s.y);
+                    ctx.closePath();
+                    ctx.stroke();
+                    break;
+                case 'insertion':
+                    ctx.beginPath();
+                    ctx.moveTo(s.x - sz, s.y + sz);
+                    ctx.lineTo(s.x, s.y - sz);
+                    ctx.lineTo(s.x + sz, s.y + sz);
+                    ctx.stroke();
+                    break;
+                case 'grid':
+                    ctx.beginPath();
+                    ctx.moveTo(s.x - 3, s.y);
+                    ctx.lineTo(s.x + 3, s.y);
+                    ctx.moveTo(s.x, s.y - 3);
+                    ctx.lineTo(s.x, s.y + 3);
+                    ctx.stroke();
+                    break;
+            }
+            ctx.restore();
+        }
+
+        function drawSelectionBox() {
+            const p1 = worldToScreen(selectionBox.x1, selectionBox.y1);
+            const p2 = worldToScreen(selectionBox.x2, selectionBox.y2);
+            const x = Math.min(p1.x, p2.x);
+            const y = Math.min(p1.y, p2.y);
+            const w = Math.abs(p2.x - p1.x);
+            const h = Math.abs(p2.y - p1.y);
+
+            const isWindow = selectionBox.x2 > selectionBox.x1;
+            ctx.strokeStyle = isWindow ? '#0066ff' : '#00ff66';
+            ctx.lineWidth = 1;
+            ctx.setLineDash(isWindow ? [] : [5, 3]);
+            ctx.fillStyle = isWindow ? 'rgba(0,102,255,0.1)' : 'rgba(0,255,102,0.1)';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+            ctx.setLineDash([]);
+        }
+
+        // ==================== HIT TESTING ====================
+        function hitTest(wx, wy, tolerance) {
+            tolerance = tolerance || 8 / zoom;
+            for (let i = entities.length - 1; i >= 0; i--) {
+                const e = entities[i];
+                const layer = layers.find(l => l.name === e.layer);
+                if (layer && (!layer.visible || layer.locked)) continue;
+                if (hitTestEntity(e, wx, wy, tolerance)) return e;
+            }
+            return null;
+        }
+
+        function hitTestEntity(e, wx, wy, tol) {
+            switch (e.type) {
+                case 'line':
+                    return distPointToSegment(wx, wy, e.x1, e.y1, e.x2, e.y2) < tol;
+                case 'rectangle':
+                    return distPointToSegment(wx, wy, e.x, e.y, e.x + e.w, e.y) < tol ||
+                           distPointToSegment(wx, wy, e.x + e.w, e.y, e.x + e.w, e.y + e.h) < tol ||
+                           distPointToSegment(wx, wy, e.x + e.w, e.y + e.h, e.x, e.y + e.h) < tol ||
+                           distPointToSegment(wx, wy, e.x, e.y + e.h, e.x, e.y) < tol;
+                case 'circle':
+                    return Math.abs(Math.hypot(wx - e.cx, wy - e.cy) - e.r) < tol;
+                case 'ellipse':
+                    const cos = Math.cos(e.rotation || 0);
+                    const sin = Math.sin(e.rotation || 0);
+                    const dx = wx - e.cx;
+                    const dy = wy - e.cy;
+                    const rx = dx * cos + dy * sin;
+                    const ry = -dx * sin + dy * cos;
+                    const val = (rx * rx) / (e.rx * e.rx) + (ry * ry) / (e.ry * e.ry);
+                    return Math.abs(val - 1) < tol / Math.min(e.rx, e.ry);
+                case 'arc': {
+                    const d = Math.hypot(wx - e.cx, wy - e.cy);
+                    if (Math.abs(d - e.r) > tol) return false;
+                    let angle = Math.atan2(wy - e.cy, wx - e.cx);
+                    return isAngleBetween(angle, e.startAngle, e.endAngle);
+                }
+                case 'polyline':
+                case 'polygon':
+                case 'spline':
+                    if (!e.points || e.points.length < 2) return false;
+                    for (let i = 0; i < e.points.length - 1; i++) {
+                        if (distPointToSegment(wx, wy, e.points[i].x, e.points[i].y, e.points[i + 1].x, e.points[i + 1].y) < tol) return true;
+                    }
+                    if ((e.type === 'polygon' || e.closed) && e.points.length > 2) {
+                        const last = e.points[e.points.length - 1];
+                        if (distPointToSegment(wx, wy, last.x, last.y, e.points[0].x, e.points[0].y) < tol) return true;
+                    }
+                    return false;
+                case 'text': {
+                    const size = e.size || 20;
+                    const textLen = (e.text || '').length * size * 0.6;
+                    return wx >= e.x && wx <= e.x + textLen && wy >= e.y - size && wy <= e.y;
+                }
+                case 'dimension':
+                    return distPointToSegment(wx, wy, e.x1, e.y1, e.x2, e.y2) < tol * 3;
+                default: return false;
+            }
+        }
+
+        function distPointToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+        }
+
+        function isAngleBetween(angle, start, end) {
+            // Normalize angles
+            while (angle < 0) angle += Math.PI * 2;
+            while (start < 0) start += Math.PI * 2;
+            while (end < 0) end += Math.PI * 2;
+            if (start <= end) return angle >= start && angle <= end;
+            return angle >= start || angle <= end;
+        }
+
+        function entitiesInBox(x1, y1, x2, y2, isWindow) {
+            const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+            const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+
+            return entities.filter(e => {
+                const layer = layers.find(l => l.name === e.layer);
+                if (layer && (!layer.visible || layer.locked)) return false;
+                const bb = getEntityBBox(e);
+                if (!bb) return false;
+                if (isWindow) {
+                    return bb.minX >= minX && bb.maxX <= maxX && bb.minY >= minY && bb.maxY <= maxY;
+                } else {
+                    return bb.maxX >= minX && bb.minX <= maxX && bb.maxY >= minY && bb.minY <= maxY;
+                }
+            });
+        }
+
+        function getEntityBBox(e) {
+            switch (e.type) {
+                case 'line':
+                    return { minX: Math.min(e.x1, e.x2), minY: Math.min(e.y1, e.y2), maxX: Math.max(e.x1, e.x2), maxY: Math.max(e.y1, e.y2) };
+                case 'rectangle':
+                    return { minX: Math.min(e.x, e.x + e.w), minY: Math.min(e.y, e.y + e.h), maxX: Math.max(e.x, e.x + e.w), maxY: Math.max(e.y, e.y + e.h) };
+                case 'circle':
+                    return { minX: e.cx - e.r, minY: e.cy - e.r, maxX: e.cx + e.r, maxY: e.cy + e.r };
+                case 'ellipse':
+                    return { minX: e.cx - e.rx, minY: e.cy - e.ry, maxX: e.cx + e.rx, maxY: e.cy + e.ry };
+                case 'arc':
+                    return { minX: e.cx - e.r, minY: e.cy - e.r, maxX: e.cx + e.r, maxY: e.cy + e.r };
+                case 'polyline': case 'polygon': case 'spline':
+                    if (!e.points || !e.points.length) return null;
+                    let mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity;
+                    for (const p of e.points) { mnX = Math.min(mnX, p.x); mnY = Math.min(mnY, p.y); mxX = Math.max(mxX, p.x); mxY = Math.max(mxY, p.y); }
+                    return { minX: mnX, minY: mnY, maxX: mxX, maxY: mxY };
+                case 'text':
+                    return { minX: e.x, minY: e.y - (e.size || 20), maxX: e.x + (e.text || '').length * (e.size || 20) * 0.6, maxY: e.y };
+                case 'dimension':
+                    return { minX: Math.min(e.x1, e.x2), minY: Math.min(e.y1, e.y2), maxX: Math.max(e.x1, e.x2), maxY: Math.max(e.y1, e.y2) };
+                default: return null;
+            }
+        }
+
+        // ==================== MOUSE EVENTS ====================
+        function onMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            mouseWorld = screenToWorld(mouseScreen.x, mouseScreen.y);
+
+            // Middle mouse = pan
+            if (e.button === 1) {
+                isPanning = true;
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                lastPanX = panX;
+                lastPanY = panY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Right click = cancel
+            if (e.button === 2) {
+                cancelCurrentOperation();
+                return;
+            }
+
+            let wp = getSnapPoint(mouseWorld.x, mouseWorld.y);
+            if (orthoEnabled && drawStart) {
+                wp = { ...applyOrtho(drawStart, wp), type: wp.type };
+            }
+
+            switch (currentTool) {
+                case 'select': handleSelectDown(wp, e); break;
+                case 'line': handleLineDown(wp); break;
+                case 'polyline': handlePolylineDown(wp); break;
+                case 'rectangle': handleRectDown(wp); break;
+                case 'circle': handleCircleDown(wp); break;
+                case 'arc': handleArcDown(wp); break;
+                case 'ellipse': handleEllipseDown(wp); break;
+                case 'polygon': handlePolygonDown(wp); break;
+                case 'spline': handleSplineDown(wp); break;
+                case 'text': handleTextDown(wp); break;
+                case 'dimension': handleDimensionDown(wp); break;
+                case 'move': handleMoveDown(wp); break;
+                case 'rotate': handleRotateDown(wp); break;
+                case 'scale': handleScaleDown(wp); break;
+                case 'mirror': handleMirrorDown(wp); break;
+                case 'measure': handleMeasureDown(wp); break;
+            }
+        }
+
+        function onMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            mouseWorld = screenToWorld(mouseScreen.x, mouseScreen.y);
+
+            if (isPanning) {
+                panX = lastPanX + (e.clientX - panStartX);
+                panY = lastPanY + (e.clientY - panStartY);
+                return;
+            }
+
+            let wp = getSnapPoint(mouseWorld.x, mouseWorld.y);
+            if (orthoEnabled && drawStart) {
+                wp = { ...applyOrtho(drawStart, wp), type: wp.type };
+            }
+            snapPoint = wp;
+
+            updateTempEntity(wp);
+
+            if (selectionBox) {
+                selectionBox.x2 = mouseWorld.x;
+                selectionBox.y2 = mouseWorld.y;
+            }
+        }
+
+        function onMouseUp(e) {
+            if (e.button === 1) {
+                isPanning = false;
+                canvas.style.cursor = 'crosshair';
+                return;
+            }
+
+            if (selectionBox && currentTool === 'select') {
+                const isWindow = selectionBox.x2 > selectionBox.x1;
+                const found = entitiesInBox(selectionBox.x1, selectionBox.y1, selectionBox.x2, selectionBox.y2, isWindow);
+                if (!e.shiftKey) selectedEntities = [];
+                selectedEntities.push(...found.filter(f => !selectedEntities.includes(f)));
+                selectionBox = null;
+                updateProperties();
+            }
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            const worldBefore = screenToWorld(mx, my);
+            const factor = e.deltaY < 0 ? 1.15 : 0.87;
+            zoom *= factor;
+            zoom = Math.max(0.01, Math.min(200, zoom));
+
+            // Zoom toward cursor
+            const worldAfter = screenToWorld(mx, my);
+            panX += (worldAfter.x - worldBefore.x) * zoom;
+            panY -= (worldAfter.y - worldBefore.y) * zoom;
+        }
+
+        function onDoubleClick(e) {
+            if (currentTool === 'select' && selectedEntities.length === 1) {
+                const ent = selectedEntities[0];
+                if (ent.type === 'text') {
+                    document.getElementById('textInput').value = ent.text;
+                    document.getElementById('textSize').value = ent.size || 20;
+                    document.getElementById('textModal').classList.remove('hidden');
+                    document.getElementById('textInput').focus();
+                    // Store editing entity
+                    window._editingTextEntity = ent;
+                }
+            }
+        }
+
+        // ==================== TOOL HANDLERS ====================
+
+        // SELECT
+        function handleSelectDown(wp, e) {
+            const hit = hitTest(mouseWorld.x, mouseWorld.y);
+            if (hit) {
+                if (e.shiftKey) {
+                    const idx = selectedEntities.indexOf(hit);
+                    if (idx >= 0) selectedEntities.splice(idx, 1);
+                    else selectedEntities.push(hit);
+                } else {
+                    if (!selectedEntities.includes(hit)) {
+                        selectedEntities = [hit];
+                    }
+                }
+            } else {
+                if (!e.shiftKey) selectedEntities = [];
+                selectionBox = { x1: mouseWorld.x, y1: mouseWorld.y, x2: mouseWorld.x, y2: mouseWorld.y };
+            }
+            updateProperties();
+        }
+
+        // LINE
+        function handleLineDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`LINE: First point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                entities.push({
+                    type: 'line', x1: drawStart.x, y1: drawStart.y, x2: wp.x, y2: wp.y,
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`LINE: To: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)} | Length: ${Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y).toFixed(2)}`);
+                drawStart = { x: wp.x, y: wp.y };
+                tempEntity = null;
+            }
+        }
+
+        // POLYLINE
+        function handlePolylineDown(wp) {
+            if (!isDrawing) {
+                drawPoints = [{ x: wp.x, y: wp.y }];
+                isDrawing = true;
+                logCommand(`POLYLINE: First point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                drawPoints.push({ x: wp.x, y: wp.y });
+                logCommand(`POLYLINE: Point ${drawPoints.length}: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            }
+        }
+
+        // RECTANGLE
+        function handleRectDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`RECTANGLE: First corner: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                const w = wp.x - drawStart.x;
+                const h = wp.y - drawStart.y;
+                entities.push({
+                    type: 'rectangle', x: drawStart.x, y: drawStart.y, w, h,
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`RECTANGLE: ${Math.abs(w).toFixed(2)} × ${Math.abs(h).toFixed(2)}`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+            }
+        }
+
+        // CIRCLE
+        function handleCircleDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`CIRCLE: Center: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                const r = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                entities.push({
+                    type: 'circle', cx: drawStart.x, cy: drawStart.y, r,
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`CIRCLE: Radius: ${r.toFixed(2)}`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+            }
+        }
+
+        // ARC
+        function handleArcDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                modifyStep = 0;
+                logCommand(`ARC: Center: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else if (modifyStep === 0) {
+                modifyStep = 1;
+                const r = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                const startAngle = Math.atan2(wp.y - drawStart.y, wp.x - drawStart.x);
+                tempEntity = {
+                    type: 'arc', cx: drawStart.x, cy: drawStart.y, r,
+                    startAngle, endAngle: startAngle,
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                };
+                logCommand(`ARC: Start angle set. Click to set end angle.`);
+            } else {
+                pushUndo();
+                const endAngle = Math.atan2(wp.y - drawStart.x, wp.x - drawStart.x);
+                tempEntity.endAngle = Math.atan2(wp.y - drawStart.y, wp.x - drawStart.x);
+                entities.push({ ...tempEntity });
+                logCommand(`ARC: Created`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+                modifyStep = 0;
+            }
+        }
+
+        // ELLIPSE
+        function handleEllipseDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`ELLIPSE: Center: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                const rx = Math.abs(wp.x - drawStart.x);
+                const ry = Math.abs(wp.y - drawStart.y);
+                entities.push({
+                    type: 'ellipse', cx: drawStart.x, cy: drawStart.y, rx: rx || 1, ry: ry || 1, rotation: 0,
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`ELLIPSE: RX: ${rx.toFixed(2)}, RY: ${ry.toFixed(2)}`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+            }
+        }
+
+        // POLYGON
+        function handlePolygonDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`POLYGON (${polygonSides} sides): Center: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                const r = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                const startAngle = Math.atan2(wp.y - drawStart.y, wp.x - drawStart.x);
+                const points = [];
+                for (let i = 0; i < polygonSides; i++) {
+                    const a = startAngle + (i * 2 * Math.PI / polygonSides);
+                    points.push({ x: drawStart.x + r * Math.cos(a), y: drawStart.y + r * Math.sin(a) });
+                }
+                entities.push({
+                    type: 'polygon', cx: drawStart.x, cy: drawStart.y, r, points, sides: polygonSides,
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`POLYGON: ${polygonSides} sides, radius: ${r.toFixed(2)}`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+            }
+        }
+
+        // SPLINE
+        function handleSplineDown(wp) {
+            if (!isDrawing) {
+                drawPoints = [{ x: wp.x, y: wp.y }];
+                isDrawing = true;
+                logCommand(`SPLINE: First point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                drawPoints.push({ x: wp.x, y: wp.y });
+                logCommand(`SPLINE: Point ${drawPoints.length}: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            }
+        }
+
+        // TEXT
+        function handleTextDown(wp) {
+            window._textInsertPoint = { x: wp.x, y: wp.y };
+            document.getElementById('textInput').value = '';
+            document.getElementById('textSize').value = 20;
+            document.getElementById('textModal').classList.remove('hidden');
+            document.getElementById('textInput').focus();
+            window._editingTextEntity = null;
+        }
+
+        // DIMENSION
+        function handleDimensionDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`DIMENSION: First point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                entities.push({
+                    type: 'dimension', x1: drawStart.x, y1: drawStart.y, x2: wp.x, y2: wp.y,
+                    color: '#00ffff', lineWidth: 0.5, lineStyle: 'solid', layer: 'Dimensions'
+                });
+                const dist = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                logCommand(`DIMENSION: Distance = ${dist.toFixed(2)}`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+            }
+        }
+
+        // MOVE
+        function handleMoveDown(wp) {
+            if (selectedEntities.length === 0) {
+                logCommand('MOVE: Select objects first');
+                return;
+            }
+            if (!isDrawing) {
+                modifyBasePoint = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`MOVE: Base point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                const dx = wp.x - modifyBasePoint.x;
+                const dy = wp.y - modifyBasePoint.y;
+                for (const e of selectedEntities) {
+                    moveEntity(e, dx, dy);
+                }
+                logCommand(`MOVE: Moved by (${dx.toFixed(2)}, ${dy.toFixed(2)})`);
+                isDrawing = false;
+                modifyBasePoint = null;
+                tempEntity = null;
+            }
+        }
+
+        function moveEntity(e, dx, dy) {
+            switch (e.type) {
+                case 'line': e.x1 += dx; e.y1 += dy; e.x2 += dx; e.y2 += dy; break;
+                case 'rectangle': e.x += dx; e.y += dy; break;
+                case 'circle': e.cx += dx; e.cy += dy; break;
+                case 'ellipse': e.cx += dx; e.cy += dy; break;
+                case 'arc': e.cx += dx; e.cy += dy; break;
+                case 'polyline': case 'polygon': case 'spline':
+                    if (e.points) e.points.forEach(p => { p.x += dx; p.y += dy; });
+                    if (e.cx !== undefined) { e.cx += dx; e.cy += dy; }
+                    break;
+                case 'text': e.x += dx; e.y += dy; break;
+                case 'dimension': e.x1 += dx; e.y1 += dy; e.x2 += dx; e.y2 += dy; break;
+            }
+        }
+
+        // ROTATE
+        function handleRotateDown(wp) {
+            if (selectedEntities.length === 0) { logCommand('ROTATE: Select objects first'); return; }
+            if (!isDrawing) {
+                modifyBasePoint = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                modifyStep = 0;
+                logCommand(`ROTATE: Base point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else if (modifyStep === 0) {
+                modifyStep = 1;
+                window._rotateRefAngle = Math.atan2(wp.y - modifyBasePoint.y, wp.x - modifyBasePoint.x);
+                logCommand('ROTATE: Specify rotation angle by clicking.');
+            } else {
+                pushUndo();
+                const angle = Math.atan2(wp.y - modifyBasePoint.y, wp.x - modifyBasePoint.x) - window._rotateRefAngle;
+                for (const e of selectedEntities) {
+                    rotateEntity(e, modifyBasePoint.x, modifyBasePoint.y, angle);
+                }
+                logCommand(`ROTATE: Rotated ${(angle * 180 / Math.PI).toFixed(1)}°`);
+                isDrawing = false;
+                modifyBasePoint = null;
+                modifyStep = 0;
+            }
+        }
+
+        function rotateEntity(e, cx, cy, angle) {
+            function rot(px, py) {
+                const dx = px - cx, dy = py - cy;
+                const cos = Math.cos(angle), sin = Math.sin(angle);
+                return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+            }
+            switch (e.type) {
+                case 'line': {
+                    const p1 = rot(e.x1, e.y1), p2 = rot(e.x2, e.y2);
+                    e.x1 = p1.x; e.y1 = p1.y; e.x2 = p2.x; e.y2 = p2.y;
+                    break;
+                }
+                case 'rectangle': {
+                    // Convert to polyline
+                    const pts = [
+                        rot(e.x, e.y), rot(e.x + e.w, e.y),
+                        rot(e.x + e.w, e.y + e.h), rot(e.x, e.y + e.h)
+                    ];
+                    e.type = 'polyline'; e.points = pts; e.closed = true;
+                    delete e.x; delete e.y; delete e.w; delete e.h;
+                    break;
+                }
+                case 'circle': {
+                    const c = rot(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    break;
+                }
+                case 'ellipse': {
+                    const c = rot(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    e.rotation = (e.rotation || 0) + angle;
+                    break;
+                }
+                case 'arc': {
+                    const c = rot(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    e.startAngle += angle; e.endAngle += angle;
+                    break;
+                }
+                case 'polyline': case 'polygon': case 'spline':
+                    if (e.points) e.points = e.points.map(p => rot(p.x, p.y));
+                    if (e.cx !== undefined) { const c = rot(e.cx, e.cy); e.cx = c.x; e.cy = c.y; }
+                    break;
+                case 'text': {
+                    const p = rot(e.x, e.y);
+                    e.x = p.x; e.y = p.y;
+                    break;
+                }
+                case 'dimension': {
+                    const p1 = rot(e.x1, e.y1), p2 = rot(e.x2, e.y2);
+                    e.x1 = p1.x; e.y1 = p1.y; e.x2 = p2.x; e.y2 = p2.y;
+                    break;
+                }
+            }
+        }
+
+        // SCALE
+        function handleScaleDown(wp) {
+            if (selectedEntities.length === 0) { logCommand('SCALE: Select objects first'); return; }
+            if (!isDrawing) {
+                modifyBasePoint = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                modifyStep = 0;
+                logCommand(`SCALE: Base point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)} - Click reference distance`);
+            } else if (modifyStep === 0) {
+                modifyStep = 1;
+                window._scaleRefDist = Math.hypot(wp.x - modifyBasePoint.x, wp.y - modifyBasePoint.y);
+                if (window._scaleRefDist < 0.001) window._scaleRefDist = 1;
+                logCommand('SCALE: Click to set new distance');
+            } else {
+                pushUndo();
+                const newDist = Math.hypot(wp.x - modifyBasePoint.x, wp.y - modifyBasePoint.y);
+                const factor = newDist / window._scaleRefDist;
+                for (const e of selectedEntities) {
+                    scaleEntity(e, modifyBasePoint.x, modifyBasePoint.y, factor);
+                }
+                logCommand(`SCALE: Scale factor: ${factor.toFixed(3)}`);
+                isDrawing = false;
+                modifyBasePoint = null;
+                modifyStep = 0;
+            }
+        }
+
+        function scaleEntity(e, cx, cy, factor) {
+            function sc(px, py) {
+                return { x: cx + (px - cx) * factor, y: cy + (py - cy) * factor };
+            }
+            switch (e.type) {
+                case 'line': {
+                    const p1 = sc(e.x1, e.y1), p2 = sc(e.x2, e.y2);
+                    e.x1 = p1.x; e.y1 = p1.y; e.x2 = p2.x; e.y2 = p2.y;
+                    break;
+                }
+                case 'rectangle': {
+                    const p = sc(e.x, e.y);
+                    e.x = p.x; e.y = p.y;
+                    e.w *= factor; e.h *= factor;
+                    break;
+                }
+                case 'circle': {
+                    const c = sc(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    e.r *= factor;
+                    break;
+                }
+                case 'ellipse': {
+                    const c = sc(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    e.rx *= factor; e.ry *= factor;
+                    break;
+                }
+                case 'arc': {
+                    const c = sc(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    e.r *= factor;
+                    break;
+                }
+                case 'polyline': case 'polygon': case 'spline':
+                    if (e.points) e.points = e.points.map(p => sc(p.x, p.y));
+                    if (e.cx !== undefined) { const c = sc(e.cx, e.cy); e.cx = c.x; e.cy = c.y; }
+                    if (e.r !== undefined) e.r *= factor;
+                    break;
+                case 'text': {
+                    const p = sc(e.x, e.y);
+                    e.x = p.x; e.y = p.y;
+                    e.size = (e.size || 20) * factor;
+                    break;
+                }
+                case 'dimension': {
+                    const p1 = sc(e.x1, e.y1), p2 = sc(e.x2, e.y2);
+                    e.x1 = p1.x; e.y1 = p1.y; e.x2 = p2.x; e.y2 = p2.y;
+                    break;
+                }
+            }
+        }
+
+        // MIRROR
+        function handleMirrorDown(wp) {
+            if (selectedEntities.length === 0) { logCommand('MIRROR: Select objects first'); return; }
+            if (!isDrawing) {
+                modifyBasePoint = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`MIRROR: First point of mirror line: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                pushUndo();
+                for (const e of selectedEntities) {
+                    const mirrored = JSON.parse(JSON.stringify(e));
+                    mirrorEntity(mirrored, modifyBasePoint.x, modifyBasePoint.y, wp.x, wp.y);
+                    entities.push(mirrored);
+                }
+                logCommand('MIRROR: Mirrored');
+                isDrawing = false;
+                modifyBasePoint = null;
+            }
+        }
+
+        function mirrorEntity(e, x1, y1, x2, y2) {
+            function mirrorPt(px, py) {
+                const dx = x2 - x1, dy = y2 - y1;
+                const lenSq = dx * dx + dy * dy;
+                const t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+                const mx = x1 + t * dx, my = y1 + t * dy;
+                return { x: 2 * mx - px, y: 2 * my - py };
+            }
+            switch (e.type) {
+                case 'line': {
+                    const p1 = mirrorPt(e.x1, e.y1), p2 = mirrorPt(e.x2, e.y2);
+                    e.x1 = p1.x; e.y1 = p1.y; e.x2 = p2.x; e.y2 = p2.y;
+                    break;
+                }
+                case 'rectangle': {
+                    const pts = [
+                        mirrorPt(e.x, e.y), mirrorPt(e.x + e.w, e.y),
+                        mirrorPt(e.x + e.w, e.y + e.h), mirrorPt(e.x, e.y + e.h)
+                    ];
+                    e.type = 'polyline'; e.points = pts; e.closed = true;
+                    delete e.x; delete e.y; delete e.w; delete e.h;
+                    break;
+                }
+                case 'circle': {
+                    const c = mirrorPt(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    break;
+                }
+                case 'ellipse': {
+                    const c = mirrorPt(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    // Approximate mirror rotation
+                    e.rotation = -(e.rotation || 0);
+                    break;
+                }
+                case 'arc': {
+                    const c = mirrorPt(e.cx, e.cy);
+                    e.cx = c.x; e.cy = c.y;
+                    const lineAngle = Math.atan2(y2 - y1, x2 - x1);
+                    const newStart = 2 * lineAngle - e.endAngle;
+                    const newEnd = 2 * lineAngle - e.startAngle;
+                    e.startAngle = newStart; e.endAngle = newEnd;
+                    break;
+                }
+                case 'polyline': case 'polygon': case 'spline':
+                    if (e.points) e.points = e.points.map(p => mirrorPt(p.x, p.y));
+                    if (e.cx !== undefined) { const c = mirrorPt(e.cx, e.cy); e.cx = c.x; e.cy = c.y; }
+                    break;
+                case 'text': {
+                    const p = mirrorPt(e.x, e.y);
+                    e.x = p.x; e.y = p.y;
+                    break;
+                }
+                case 'dimension': {
+                    const p1 = mirrorPt(e.x1, e.y1), p2 = mirrorPt(e.x2, e.y2);
+                    e.x1 = p1.x; e.y1 = p1.y; e.x2 = p2.x; e.y2 = p2.y;
+                    break;
+                }
+            }
+        }
+
+        // MEASURE
+        function handleMeasureDown(wp) {
+            if (!isDrawing) {
+                drawStart = { x: wp.x, y: wp.y };
+                isDrawing = true;
+                logCommand(`MEASURE: First point: ${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}`);
+            } else {
+                const dist = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                const dx = wp.x - drawStart.x;
+                const dy = wp.y - drawStart.y;
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                logCommand(`DISTANCE = ${dist.toFixed(4)} | ΔX = ${dx.toFixed(4)}, ΔY = ${dy.toFixed(4)} | Angle = ${angle.toFixed(2)}°`);
+                isDrawing = false;
+                drawStart = null;
+                tempEntity = null;
+            }
+        }
+
+        // ==================== TEMP ENTITY UPDATE ====================
+        function updateTempEntity(wp) {
+            if (!isDrawing) { tempEntity = null; return; }
+
+            switch (currentTool) {
+                case 'line':
+                    if (drawStart) {
+                        tempEntity = {
+                            type: 'line', x1: drawStart.x, y1: drawStart.y, x2: wp.x, y2: wp.y,
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'polyline':
+                    if (drawPoints.length > 0) {
+                        tempEntity = {
+                            type: 'polyline', points: [...drawPoints, { x: wp.x, y: wp.y }],
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'rectangle':
+                    if (drawStart) {
+                        tempEntity = {
+                            type: 'rectangle', x: drawStart.x, y: drawStart.y, w: wp.x - drawStart.x, h: wp.y - drawStart.y,
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'circle':
+                    if (drawStart) {
+                        tempEntity = {
+                            type: 'circle', cx: drawStart.x, cy: drawStart.y, r: Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y),
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'arc':
+                    if (drawStart && modifyStep === 0) {
+                        const r = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                        const a = Math.atan2(wp.y - drawStart.y, wp.x - drawStart.x);
+                        tempEntity = {
+                            type: 'circle', cx: drawStart.x, cy: drawStart.y, r,
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: 'dashed', layer: currentLayer
+                        };
+                    } else if (drawStart && modifyStep === 1 && tempEntity) {
+                        tempEntity.endAngle = Math.atan2(wp.y - drawStart.y, wp.x - drawStart.x);
+                    }
+                    break;
+                case 'ellipse':
+                    if (drawStart) {
+                        tempEntity = {
+                            type: 'ellipse', cx: drawStart.x, cy: drawStart.y,
+                            rx: Math.abs(wp.x - drawStart.x) || 1, ry: Math.abs(wp.y - drawStart.y) || 1, rotation: 0,
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'polygon':
+                    if (drawStart) {
+                        const r = Math.hypot(wp.x - drawStart.x, wp.y - drawStart.y);
+                        const startAngle = Math.atan2(wp.y - drawStart.y, wp.x - drawStart.x);
+                        const points = [];
+                        for (let i = 0; i < polygonSides; i++) {
+                            const a = startAngle + (i * 2 * Math.PI / polygonSides);
+                            points.push({ x: drawStart.x + r * Math.cos(a), y: drawStart.y + r * Math.sin(a) });
+                        }
+                        tempEntity = {
+                            type: 'polygon', cx: drawStart.x, cy: drawStart.y, r, points,
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'spline':
+                    if (drawPoints.length > 0) {
+                        tempEntity = {
+                            type: 'spline', points: [...drawPoints, { x: wp.x, y: wp.y }],
+                            color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                        };
+                    }
+                    break;
+                case 'dimension':
+                    if (drawStart) {
+                        tempEntity = {
+                            type: 'dimension', x1: drawStart.x, y1: drawStart.y, x2: wp.x, y2: wp.y,
+                            color: '#00ffff', lineWidth: 0.5, lineStyle: 'solid', layer: 'Dimensions'
+                        };
+                    }
+                    break;
+                case 'measure':
+                    if (drawStart) {
+                        tempEntity = {
+                            type: 'line', x1: drawStart.x, y1: drawStart.y, x2: wp.x, y2: wp.y,
+                            color: '#ff8800', lineWidth: 1, lineStyle: 'dashed', layer: currentLayer
+                        };
+                    }
+                    break;
+            }
+        }
+
+        // ==================== CANCEL / COMPLETE ====================
+        function cancelCurrentOperation() {
+            if (currentTool === 'polyline' && drawPoints.length >= 2) {
+                pushUndo();
+                entities.push({
+                    type: 'polyline', points: [...drawPoints],
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`POLYLINE: Created with ${drawPoints.length} points`);
+            }
+            if (currentTool === 'spline' && drawPoints.length >= 2) {
+                pushUndo();
+                entities.push({
+                    type: 'spline', points: [...drawPoints],
+                    color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                });
+                logCommand(`SPLINE: Created with ${drawPoints.length} points`);
+            }
+
+            isDrawing = false;
+            drawStart = null;
+            drawPoints = [];
+            tempEntity = null;
+            selectionBox = null;
+            modifyStep = 0;
+            modifyBasePoint = null;
+            logCommand('*Cancel*');
+        }
+
+        // ==================== KEYBOARD ====================
+        function onKeyDown(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+            if (e.key === 'Escape') {
+                cancelCurrentOperation();
+                setTool('select');
+                selectedEntities = [];
+                return;
+            }
+            if (e.key === 'Delete') { deleteSelected(); return; }
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); return; }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); return; }
+            if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveDrawing(); return; }
+            if (e.ctrlKey && e.key === 'a') { e.preventDefault(); selectAll(); return; }
+            if (e.ctrlKey && e.key === 'c') { e.preventDefault(); copySelected(); return; }
+            if (e.ctrlKey && e.key === 'v') { e.preventDefault(); pasteClipboard(); return; }
+            if (e.ctrlKey && e.key === 'n') { e.preventDefault(); newDrawing(); return; }
+            if (e.ctrlKey && e.key === 'o') { e.preventDefault(); loadDrawing(); return; }
+
+            if (e.key === 'F3') { e.preventDefault(); toggleOsnap(); return; }
+            if (e.key === 'F8') { e.preventDefault(); toggleOrtho(); return; }
+            if (e.key === 'F9') { e.preventDefault(); toggleSnap(); return; }
+
+            // Focus command line on any other key
+            if (!e.ctrlKey && !e.altKey && e.key.length === 1) {
+                document.getElementById('command-input').focus();
+            }
+        }
+
+        function onCommandKey(e) {
+            if (e.key === 'Enter') {
+                const input = e.target.value.trim().toUpperCase();
+                e.target.value = '';
+                processCommand(input);
+            }
+            if (e.key === 'Escape') {
+                e.target.value = '';
+                e.target.blur();
+                cancelCurrentOperation();
+                setTool('select');
+            }
+        }
+
+        function processCommand(cmd) {
+            if (!cmd) return;
+            logCommand(`> ${cmd}`);
+
+            // Check for coordinate input (x,y)
+            if (isDrawing && cmd.match(/^-?[\d.]+\s*,\s*-?[\d.]+$/)) {
+                const parts = cmd.split(',').map(s => parseFloat(s.trim()));
+                if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    const wp = { x: parts[0], y: parts[1], type: 'input' };
+                    // Simulate click at this coordinate
+                    switch (currentTool) {
+                        case 'line': handleLineDown(wp); break;
+                        case 'polyline': handlePolylineDown(wp); break;
+                        case 'rectangle': handleRectDown(wp); break;
+                        case 'circle': handleCircleDown(wp); break;
+                        case 'arc': handleArcDown(wp); break;
+                        case 'ellipse': handleEllipseDown(wp); break;
+                        case 'polygon': handlePolygonDown(wp); break;
+                        case 'dimension': handleDimensionDown(wp); break;
+                        case 'measure': handleMeasureDown(wp); break;
+                    }
+                    return;
+                }
+            }
+
+            // Check for relative coordinate input (@x,y)
+            if (isDrawing && drawStart && cmd.match(/^@-?[\d.]+\s*,\s*-?[\d.]+$/)) {
+                const parts = cmd.substring(1).split(',').map(s => parseFloat(s.trim()));
+                if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    const wp = { x: drawStart.x + parts[0], y: drawStart.y + parts[1], type: 'input' };
+                    switch (currentTool) {
+                        case 'line': handleLineDown(wp); break;
+                        case 'rectangle': handleRectDown(wp); break;
+                    }
+                    return;
+                }
+            }
+
+            // Numeric input for radius etc.
+            if (isDrawing && !isNaN(parseFloat(cmd))) {
+                const val = parseFloat(cmd);
+                if (currentTool === 'circle' && drawStart) {
+                    pushUndo();
+                    entities.push({
+                        type: 'circle', cx: drawStart.x, cy: drawStart.y, r: val,
+                        color: currentColor, lineWidth: currentLineWidth, lineStyle: currentLineStyle, layer: currentLayer
+                    });
+                    logCommand(`CIRCLE: Radius: ${val.toFixed(2)}`);
+                    isDrawing = false; drawStart = null; tempEntity = null;
+                    return;
+                }
+            }
+
+            const commands = {
+                'L': 'line', 'LINE': 'line',
+                'PL': 'polyline', 'PLINE': 'polyline', 'POLYLINE': 'polyline',
+                'REC': 'rectangle', 'RECT': 'rectangle', 'RECTANGLE': 'rectangle',
+                'C': 'circle', 'CIRCLE': 'circle',
+                'A': 'arc', 'ARC': 'arc',
+                'EL': 'ellipse', 'ELLIPSE': 'ellipse',
+                'POL': 'polygon', 'POLYGON': 'polygon',
+                'SPL': 'spline', 'SPLINE': 'spline',
+                'T': 'text', 'TEXT': 'text', 'MTEXT': 'text',
+                'DIM': 'dimension', 'DIMENSION': 'dimension',
+                'M': 'move', 'MOVE': 'move',
+                'RO': 'rotate', 'ROTATE': 'rotate',
+                'SC': 'scale', 'SCALE': 'scale',
+                'MI': 'mirror', 'MIRROR': 'mirror',
+                'O': 'offset', 'OFFSET': 'offset',
+                'TR': 'trim', 'TRIM': 'trim',
+                'EX': 'extend', 'EXTEND': 'extend',
+                'F': 'fillet', 'FILLET': 'fillet',
+                'CHA': 'chamfer', 'CHAMFER': 'chamfer',
+                'DI': 'measure', 'DIST': 'measure', 'MEASURE': 'measure',
+                'SE': 'select', 'SELECT': 'select',
+            };
+
+            if (commands[cmd]) {
+                cancelCurrentOperation();
+                setTool(commands[cmd]);
+                return;
+            }
+
+            switch (cmd) {
+                case 'U': case 'UNDO': undo(); break;
+                case 'REDO': redo(); break;
+                case 'E': case 'ERASE': case 'DELETE': deleteSelected(); break;
+                case 'Z': case 'ZOOM':
+                    logCommand('Use mouse wheel to zoom, or type ZE for zoom extents');
+                    break;
+                case 'ZE': zoomExtents(); break;
+                case 'P': case 'PAN':
+                    logCommand('Use middle mouse button to pan');
+                    break;
+                case 'G': case 'GRID': toggleGrid(); break;
+                case 'SNAP': toggleSnap(); break;
+                case 'ORTHO': toggleOrtho(); break;
+                case 'OSNAP': toggleOsnap(); break;
+                case 'NEW': newDrawing(); break;
+                case 'SAVE': saveDrawing(); break;
+                case 'OPEN': loadDrawing(); break;
+                case 'HELP': showHelp(); break;
+                case 'LIST':
+                    if (selectedEntities.length > 0) {
+                        selectedEntities.forEach(e => {
+                            logCommand(`${e.type.toUpperCase()} | Layer: ${e.layer} | Color: ${e.color}`);
+                        });
+                    } else {
+                        logCommand(`Total entities: ${entities.length}`);
+                    }
+                    break;
+                default:
+                    logCommand(`Unknown command: ${cmd}`);
+            }
+        }
+
+        // ==================== TOOL MANAGEMENT ====================
+        function setTool(tool) {
+            cancelCurrentOperation();
+            currentTool = tool;
+
+            if (tool === 'polygon') {
+                document.getElementById('polygonModal').classList.remove('hidden');
+                document.getElementById('polygonSides').focus();
+            }
+
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
+            if (btn) btn.classList.add('active');
+
+            document.getElementById('toolStatus').textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+            logCommand(`Tool: ${tool.toUpperCase()}`);
+        }
+
+        // ==================== UNDO / REDO ====================
+        function pushUndo() {
+            undoStack.push(JSON.stringify(entities));
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];
+        }
+
+        function undo() {
+            if (undoStack.length === 0) { logCommand('Nothing to undo'); return; }
+            redoStack.push(JSON.stringify(entities));
+            entities = JSON.parse(undoStack.pop());
+            selectedEntities = [];
+            logCommand('Undo');
+            updateProperties();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) { logCommand('Nothing to redo'); return; }
+            undoStack.push(JSON.stringify(entities));
+            entities = JSON.parse(redoStack.pop());
+            selectedEntities = [];
+            logCommand('Redo');
+            updateProperties();
+        }
+
+        // ==================== EDIT OPERATIONS ====================
+        function deleteSelected() {
+            if (selectedEntities.length === 0) { logCommand('Nothing selected'); return; }
+            pushUndo();
+            entities = entities.filter(e => !selectedEntities.includes(e));
+            logCommand(`Deleted ${selectedEntities.length} object(s)`);
+            selectedEntities = [];
+            updateProperties();
+        }
+
+        function selectAll() {
+            selectedEntities = entities.filter(e => {
+                const layer = layers.find(l => l.name === e.layer);
+                return !layer || (layer.visible && !layer.locked);
+            });
+            logCommand(`Selected ${selectedEntities.length} objects`);
+            updateProperties();
+        }
+
+        function copySelected() {
+            if (selectedEntities.length === 0) return;
+            clipboard = selectedEntities.map(e => JSON.parse(JSON.stringify(e)));
+            logCommand(`Copied ${clipboard.length} object(s)`);
+        }
+
+        function pasteClipboard() {
+            if (clipboard.length === 0) { logCommand('Clipboard empty'); return; }
+            pushUndo();
+            const pasted = clipboard.map(e => {
+                const ne = JSON.parse(JSON.stringify(e));
+                moveEntity(ne, 20, -20);
+                return ne;
+            });
+            entities.push(...pasted);
+            selectedEntities = pasted;
+            logCommand(`Pasted ${pasted.length} object(s)`);
+            updateProperties();
+        }
+
+        // ==================== VIEW OPERATIONS ====================
+        function zoomIn() {
+            zoom *= 1.3;
+            logCommand('Zoom In');
+        }
+
+        function zoomOut() {
+            zoom /= 1.3;
+            zoom = Math.max(0.01, zoom);
+            logCommand('Zoom Out');
+        }
+
+        function zoomExtents() {
+            if (entities.length === 0) { centerView(); return; }
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const e of entities) {
+                const bb = getEntityBBox(e);
+                if (!bb) continue;
+                minX = Math.min(minX, bb.minX);
+                minY = Math.min(minY, bb.minY);
+                maxX = Math.max(maxX, bb.maxX);
+                maxY = Math.max(maxY, bb.maxY);
+            }
+            if (!isFinite(minX)) { centerView(); return; }
+
+            const padding = 50;
+            const extentW = maxX - minX || 100;
+            const extentH = maxY - minY || 100;
+            const scaleX = (canvas.width - padding * 2) / extentW;
+            const scaleY = (canvas.height - padding * 2) / extentH;
+            zoom = Math.min(scaleX, scaleY);
+
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            panX = canvas.width / 2 - centerX * zoom;
+            panY = canvas.height / 2 + centerY * zoom;
+
+            logCommand('Zoom Extents');
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            document.getElementById('gridStatus').textContent = showGrid ? 'ON' : 'OFF';
+            document.getElementById('gridStatus').className = showGrid ? 'text-green-400' : 'text-gray-500';
+            logCommand(`Grid: ${showGrid ? 'ON' : 'OFF'}`);
+        }
+
+        function toggleSnap() {
+            snapEnabled = !snapEnabled;
+            document.getElementById('snapStatus').textContent = snapEnabled ? 'ON' : 'OFF';
+            document.getElementById('snapStatus').className = snapEnabled ? 'text-green-400' : 'text-gray-500';
+            logCommand(`Snap: ${snapEnabled ? 'ON' : 'OFF'}`);
+        }
+
+        function toggleOrtho() {
+            orthoEnabled = !orthoEnabled;
+            document.getElementById('orthoStatus').textContent = orthoEnabled ? 'ON' : 'OFF';
+            document.getElementById('orthoStatus').className = orthoEnabled ? 'text-green-400' : 'text-gray-500';
+            logCommand(`Ortho: ${orthoEnabled ? 'ON' : 'OFF'}`);
+        }
+
+        function toggleOsnap() {
+            osnapEnabled = !osnapEnabled;
+            document.getElementById('osnapStatus').textContent = osnapEnabled ? 'ON' : 'OFF';
+            document.getElementById('osnapStatus').className = osnapEnabled ? 'text-green-400' : 'text-gray-500';
+            logCommand(`OSnap: ${osnapEnabled ? 'ON' : 'OFF'}`);
+        }
+
+        // ==================== FILE OPERATIONS ====================
+        function newDrawing() {
+            if (entities.length > 0 && !confirm('Create new drawing? Unsaved changes will be lost.')) return;
+            entities = [];
+            selectedEntities = [];
+            undoStack = [];
+            redoStack = [];
+            centerView();
+            zoom = 1;
+            logCommand('New drawing created');
+            updateProperties();
+        }
+
+        function saveDrawing() {
+            const data = {
+                version: 2,
+                entities,
+                layers,
+                view: { panX, panY, zoom }
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'drawing.webcad';
+            a.click();
+            URL.revokeObjectURL(url);
+            logCommand('Drawing saved');
+        }
+
+        function loadDrawing() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileLoad(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    entities = data.entities || [];
+                    if (data.layers) {
+                        layers = data.layers;
+                        updateLayersList();
+                        updateLayerSelect();
+                    }
+                    if (data.view) {
+                        panX = data.view.panX;
+                        panY = data.view.panY;
+                        zoom = data.view.zoom;
+                    }
+                    selectedEntities = [];
+                    undoStack = [];
+                    redoStack = [];
+                    logCommand(`Loaded: ${file.name} (${entities.length} entities)`);
+                    updateProperties();
+                } catch (err) {
+                    logCommand('Error loading file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        function exportSVG() {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const e of entities) {
+                const bb = getEntityBBox(e);
+                if (!bb) continue;
+                minX = Math.min(minX, bb.minX); minY = Math.min(minY, bb.minY);
+                maxX = Math.max(maxX, bb.maxX); maxY = Math.max(maxY, bb.maxY);
+            }
+            if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 100; maxY = 100; }
+            const pad = 20;
+            const w = maxX - minX + pad * 2;
+            const h = maxY - minY + pad * 2;
+
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - pad} ${-maxY - pad} ${w} ${h}" width="${w}" height="${h}">\n`;
+            svg += `<rect x="${minX - pad}" y="${-maxY - pad}" width="${w}" height="${h}" fill="#1a1a2e"/>\n`;
+
+            for (const e of entities) {
+                const color = e.color || '#ffffff';
+                const sw = e.lineWidth || 1;
+                let dash = '';
+                if (e.lineStyle === 'dashed') dash = ' stroke-dasharray="10,5"';
+                else if (e.lineStyle === 'dotted') dash = ' stroke-dasharray="2,4"';
+                else if (e.lineStyle === 'dashdot') dash = ' stroke-dasharray="10,4,2,4"';
+
+                switch (e.type) {
+                    case 'line':
+                        svg += `<line x1="${e.x1}" y1="${-e.y1}" x2="${e.x2}" y2="${-e.y2}" stroke="${color}" stroke-width="${sw}"${dash}/>\n`;
+                        break;
+                    case 'rectangle':
+                        svg += `<rect x="${Math.min(e.x, e.x + e.w)}" y="${-Math.max(e.y, e.y + e.h)}" width="${Math.abs(e.w)}" height="${Math.abs(e.h)}" stroke="${color}" stroke-width="${sw}" fill="none"${dash}/>\n`;
+                        break;
+                    case 'circle':
+                        svg += `<circle cx="${e.cx}" cy="${-e.cy}" r="${e.r}" stroke="${color}" stroke-width="${sw}" fill="none"${dash}/>\n`;
+                        break;
+                    case 'ellipse':
+                        svg += `<ellipse cx="${e.cx}" cy="${-e.cy}" rx="${e.rx}" ry="${e.ry}" stroke="${color}" stroke-width="${sw}" fill="none"${dash}/>\n`;
+                        break;
+                    case 'polyline': case 'polygon': case 'spline':
+                        if (e.points && e.points.length > 1) {
+                            const pts = e.points.map(p => `${p.x},${-p.y}`).join(' ');
+                            if (e.type === 'polygon' || e.closed) {
+                                svg += `<polygon points="${pts}" stroke="${color}" stroke-width="${sw}" fill="none"${dash}/>\n`;
+                            } else {
+                                svg += `<polyline points="${pts}" stroke="${color}" stroke-width="${sw}" fill="none"${dash}/>\n`;
+                            }
+                        }
+                        break;
+                    case 'text':
+                        svg += `<text x="${e.x}" y="${-e.y}" fill="${color}" font-size="${e.size || 20}" font-family="Arial">${e.text || ''}</text>\n`;
+                        break;
+                }
+            }
+            svg += '</svg>';
+
+            const blob = new Blob([svg], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'drawing.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+            logCommand('Exported SVG');
+        }
+
+        function exportPNG() {
+            const link = document.createElement('a');
+            link.download = 'drawing.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            logCommand('Exported PNG');
+        }
+
+        function printDrawing() {
+            const dataUrl = canvas.toDataURL('image/png');
+            const win = window.open('');
+            win.document.write(`<img src="${dataUrl}" onload="window.print();window.close()">`);
+        }
+
+        // ==================== LAYERS ====================
+        function updateLayersList() {
+            const list = document.getElementById('layersList');
+            list.innerHTML = '';
+            layers.forEach((l, i) => {
+                const item = document.createElement('div');
+                item.className = `layer-item flex items-center gap-2 px-2 py-1.5 cursor-pointer ${l.name === currentLayer ? 'active' : ''}`;
+                item.innerHTML = `
+                    <button class="text-xs px-1 ${l.visible ? 'text-yellow-300' : 'text-gray-600'}" onclick="event.stopPropagation();toggleLayerVisibility(${i})" title="Visibility">👁</button>
+                    <button class="text-xs px-1 ${l.locked ? 'text-red-400' : 'text-gray-600'}" onclick="event.stopPropagation();toggleLayerLock(${i})" title="Lock">🔒</button>
+                    <div class="color-swatch rounded" style="background:${l.color}" onclick="event.stopPropagation();changeLayerColor(${i})"></div>
+                    <span class="flex-1 truncate">${l.name}</span>
+                `;
+                item.addEventListener('click', () => {
+                    currentLayer = l.name;
+                    document.getElementById('layerSelect').value = l.name;
+                    updateLayersList();
+                });
+                list.appendChild(item);
+            });
+        }
+
+        function updateLayerSelect() {
+            const sel = document.getElementById('layerSelect');
+            sel.innerHTML = '';
+            layers.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l.name;
+                opt.textContent = l.name;
+                sel.appendChild(opt);
+            });
+            sel.value = currentLayer;
+        }
+
+        function addLayer() {
+            const name = prompt('Layer name:');
+            if (!name || layers.find(l => l.name === name)) return;
+            layers.push({ name, color: '#ffffff', visible: true, locked: false });
+            updateLayersList();
+            updateLayerSelect();
+            logCommand(`Layer "${name}" added`);
+        }
+
+        function deleteLayer() {
+            if (layers.length <= 1) { logCommand('Cannot delete last layer'); return; }
+            const idx = layers.findIndex(l => l.name === currentLayer);
+            if (idx < 0) return;
+            if (currentLayer === '0') { logCommand('Cannot delete layer 0'); return; }
+            // Move entities to layer 0
+            entities.filter(e => e.layer === currentLayer).forEach(e => e.layer = '0');
+            layers.splice(idx, 1);
+            currentLayer = '0';
+            updateLayersList();
+            updateLayerSelect();
+            logCommand('Layer deleted');
+        }
+
+        function toggleLayerVisibility(idx) {
+            layers[idx].visible = !layers[idx].visible;
+            updateLayersList();
+        }
+
+        function toggleLayerLock(idx) {
+            layers[idx].locked = !layers[idx].locked;
+            updateLayersList();
+        }
+
+        function changeLayerColor(idx) {
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.value = layers[idx].color;
+            input.addEventListener('change', () => {
+                layers[idx].color = input.value;
+                updateLayersList();
+            });
+            input.click();
+        }
+
+        // ==================== PROPERTIES ====================
+        function updateProperties() {
+            const propDiv = document.getElementById('propDisplay');
+            if (selectedEntities.length === 0) {
+                propDiv.innerHTML = '<span class="text-gray-500 italic">No selection</span>';
+                return;
+            }
+            if (selectedEntities.length > 1) {
+                propDiv.innerHTML = `<div class="text-blue-400">${selectedEntities.length} objects selected</div>`;
+                return;
+            }
+            const e = selectedEntities[0];
+            let html = `<div class="space-y-1">`;
+            html += `<div><span class="text-gray-500">Type:</span> <span class="text-blue-300">${e.type.toUpperCase()}</span></div>`;
+            html += `<div><span class="text-gray-500">Layer:</span> ${e.layer}</div>`;
+            html += `<div><span class="text-gray-500">Color:</span> <span style="color:${e.color}">${e.color}</span></div>`;
+            html += `<div><span class="text-gray-500">Width:</span> ${e.lineWidth}</div>`;
+
+            switch (e.type) {
+                case 'line':
+                    html += `<div><span class="text-gray-500">From:</span> ${e.x1.toFixed(2)}, ${e.y1.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">To:</span> ${e.x2.toFixed(2)}, ${e.y2.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">Length:</span> ${Math.hypot(e.x2 - e.x1, e.y2 - e.y1).toFixed(2)}</div>`;
+                    break;
+                case 'circle':
+                    html += `<div><span class="text-gray-500">Center:</span> ${e.cx.toFixed(2)}, ${e.cy.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">Radius:</span> ${e.r.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">Area:</span> ${(Math.PI * e.r * e.r).toFixed(2)}</div>`;
+                    break;
+                case 'rectangle':
+                    html += `<div><span class="text-gray-500">Origin:</span> ${e.x.toFixed(2)}, ${e.y.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">W×H:</span> ${Math.abs(e.w).toFixed(2)} × ${Math.abs(e.h).toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">Area:</span> ${Math.abs(e.w * e.h).toFixed(2)}</div>`;
+                    break;
+                case 'ellipse':
+                    html += `<div><span class="text-gray-500">Center:</span> ${e.cx.toFixed(2)}, ${e.cy.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">RX:</span> ${e.rx.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">RY:</span> ${e.ry.toFixed(2)}</div>`;
+                    break;
+                case 'text':
+                    html += `<div><span class="text-gray-500">Pos:</span> ${e.x.toFixed(2)}, ${e.y.toFixed(2)}</div>`;
+                    html += `<div><span class="text-gray-500">Text:</span> "${e.text}"</div>`;
+                    html += `<div><span class="text-gray-500">Size:</span> ${e.size}</div>`;
+                    break;
+                case 'polyline': case 'spline': case 'polygon':
+                    html += `<div><span class="text-gray-500">Points:</span> ${e.points ? e.points.length : 0}</div>`;
+                    break;
+            }
+            html += `</div>`;
+            propDiv.innerHTML = html;
+
+            // Update entity list
+            updateEntityList();
+        }
+
+        function updateEntityList() {
+            const div = document.getElementById('entityContent');
+            if (entities.length === 0) {
+                div.innerHTML = '<div class="text-gray-500 italic p-2">No entities</div>';
+                return;
+            }
+            let html = '';
+            entities.forEach((e, i) => {
+                const isSel = selectedEntities.includes(e);
+                html += `<div class="px-2 py-1 cursor-pointer hover:bg-gray-700 flex items-center gap-2 ${isSel ? 'bg-blue-900' : ''}" onclick="selectEntityByIndex(${i})">
+                    <span style="color:${e.color}" class="text-xs">■</span>
+                    <span class="text-xs truncate">${e.type.toUpperCase()}</span>
+                    <span class="text-xs text-gray-500 ml-auto">${e.layer}</span>
+                </div>`;
+            });
+            div.innerHTML = html;
+        }
+
+        function selectEntityByIndex(i) {
+            selectedEntities = [entities[i]];
+            updateProperties();
+        }
+
+        function showProperties() {
+            updateProperties();
+        }
+
+        function togglePanel(id) {
+            const el = document.getElementById(id);
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // ==================== MODALS ====================
+        function showHelp() {
+            document.getElementById('helpModal').classList.remove('hidden');
+        }
+
+        function showAbout() {
+            alert('WebCAD v2.0\n\nA browser-based CAD application.\nBuilt with HTML5 Canvas and Tailwind CSS.\n\nFeatures:\n- Draw: Line, Polyline, Rectangle, Circle, Arc, Ellipse, Polygon, Spline, Text, Dimension\n- Modify: Move, Rotate, Scale, Mirror, Offset\n- Object Snap, Grid Snap, Ortho mode\n- Layers, Properties panel\n- Undo/Redo, Copy/Paste\n- Save/Load, Export SVG/PNG');
+        }
+
+        function showLayerManager() {
+            document.getElementById('rightPanel').style.display =
+                document.getElementById('rightPanel').style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function confirmTextInput() {
+            const text = document.getElementById('textInput').value;
+            const size = parseFloat(document.getElementById('textSize').value) || 20;
+            document.getElementById('textModal').classList.add('hidden');
+
+            if (window._editingTextEntity) {
+                pushUndo();
+                window._editingTextEntity.text = text;
+                window._editingTextEntity.size = size;
+                window._editingTextEntity = null;
+                logCommand('Text updated');
+            } else if (window._textInsertPoint && text) {
+                pushUndo();
+                entities.push({
+                    type: 'text', x: window._textInsertPoint.x, y: window._textInsertPoint.y,
+                    text, size, color: currentColor, lineWidth: 1, lineStyle: 'solid', layer: currentLayer
+                });
+                logCommand(`TEXT: "${text}" at ${window._textInsertPoint.x.toFixed(2)}, ${window._textInsertPoint.y.toFixed(2)}`);
+                window._textInsertPoint = null;
+            }
+        }
+
+        function cancelTextInput() {
+            document.getElementById('textModal').classList.add('hidden');
+            window._editingTextEntity = null;
+            window._textInsertPoint = null;
+        }
+
+        function confirmPolygonSides() {
+            polygonSides = parseInt(document.getElementById('polygonSides').value) || 6;
+            polygonSides = Math.max(3, Math.min(64, polygonSides));
+            document.getElementById('polygonModal').classList.add('hidden');
+            logCommand(`Polygon sides: ${polygonSides}`);
+        }
+
+        // ==================== LOGGING ====================
+        function logCommand(msg) {
+            const hist = document.getElementById('commandHistory');
+            const line = document.createElement('div');
+            line.textContent = msg;
+            hist.appendChild(line);
+            hist.scrollTop = hist.scrollHeight;
+        }
+
+        // ==================== INIT ====================
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCAD Lite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { overflow: hidden; }
+        canvas { cursor: crosshair; }
+        /* Custom scrollbar for command history */
+        .cmd-scroll::-webkit-scrollbar { width: 8px; }
+        .cmd-scroll::-webkit-scrollbar-thumb { background: #4b5563; }
+        .active-tool { background-color: #2563eb; color: white; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 h-screen flex flex-col font-mono text-sm">
+
+    <!-- TOP TOOLBAR -->
+    <header class="bg-gray-800 border-b border-gray-700 p-2 flex items-center justify-between select-none h-14">
+        <div class="flex items-center gap-4">
+            <span class="font-bold text-xl text-blue-400 tracking-wider">WEBCAD</span>
+            <div class="h-6 w-px bg-gray-600 mx-2"></div>
+            
+            <!-- Tools -->
+            <div class="flex gap-1" id="toolbar">
+                <button onclick="setTool('select')" id="btn-select" class="p-2 rounded hover:bg-gray-700 active-tool" title="Select/Pan (Right Click)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                </button>
+                <button onclick="setTool('line')" id="btn-line" class="p-2 rounded hover:bg-gray-700" title="Line (L)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20L20 4"></path></svg>
+                </button>
+                <button onclick="setTool('rect')" id="btn-rect" class="p-2 rounded hover:bg-gray-700" title="Rectangle (R)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4z"></path></svg>
+                </button>
+                <button onclick="setTool('circle')" id="btn-circle" class="p-2 rounded hover:bg-gray-700" title="Circle (C)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path></svg>
+                </button>
+                 <button onclick="clearCanvas()" class="p-2 rounded hover:bg-red-900 text-red-400 ml-4" title="Clear All">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4 text-xs text-gray-400">
+            <div id="coords">0.00, 0.00, 0.00</div>
+            <div>Model</div>
+        </div>
+    </header>
+
+    <!-- MAIN VIEWPORT -->
+    <main class="flex-grow relative bg-black overflow-hidden">
+        <canvas id="cadCanvas" class="block"></canvas>
+        
+        <!-- Crosshair Elements (HTML overlay for better performance than canvas redraw) -->
+        <div id="v-hair" class="absolute w-px bg-white/30 h-full top-0 pointer-events-none hidden"></div>
+        <div id="h-hair" class="absolute h-px bg-white/30 w-full left-0 pointer-events-none hidden"></div>
+    </main>
+
+    <!-- COMMAND LINE BOTTOM AREA -->
+    <footer class="h-32 bg-gray-800 border-t border-gray-700 flex flex-col">
+        <div class="flex-grow p-2 overflow-y-auto cmd-scroll text-gray-400 text-xs" id="cmd-history">
+            <div>WebCAD Lite v1.0 initialized...</div>
+            <div>Type 'L' for Line, 'C' for Circle, 'R' for Rect. Wheel to Zoom. Right-click to Pan.</div>
+        </div>
+        <div class="h-8 bg-gray-900 flex items-center px-2 border-t border-gray-700">
+            <span class="text-blue-500 mr-2 font-bold">Command:</span>
+            <input type="text" id="cmd-input" class="bg-transparent border-none outline-none text-white w-full uppercase" autocomplete="off" autofocus>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. SETUP & STATE ---
+        const canvas = document.getElementById('cadCanvas');
+        const ctx = canvas.getContext('2d');
+        const coordsDisplay = document.getElementById('coords');
+        const cmdHistory = document.getElementById('cmd-history');
+        const cmdInput = document.getElementById('cmd-input');
+        const vHair = document.getElementById('v-hair');
+        const hHair = document.getElementById('h-hair');
+
+        let width, height;
+        
+        // Viewport State
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        
+        // Drawing State
+        let entities = []; // { type: 'line', x1, y1, x2, y2, color, ... }
+        let currentTool = 'select';
+        let isDrawing = false;
+        let isPanning = false;
+        let startPoint = null; // {x, y} in world coords
+        let mouseWorld = { x: 0, y: 0 };
+        let mouseScreen = { x: 0, y: 0 };
+
+        // Colors
+        const THEME = {
+            gridMajor: '#333333',
+            gridMinor: '#222222',
+            crosshair: '#ffffff',
+            entity: '#ffffff',
+            preview: '#ffff00', // Yellow for active drawing
+            selection: '#00ff00'
+        };
+
+        // --- 2. RESIZE HANDLING ---
+        function resize() {
+            width = canvas.width = canvas.parentElement.clientWidth;
+            height = canvas.height = canvas.parentElement.clientHeight;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+        
+        // --- 3. COORDINATE SYSTEMS ---
+        // Screen (Pixels) -> World (CAD Units)
+        function toWorld(sx, sy) {
+            return {
+                x: (sx - panX) / scale,
+                y: (sy - panY) / scale
+            };
+        }
+
+        // World -> Screen
+        function toScreen(wx, wy) {
+            return {
+                x: wx * scale + panX,
+                y: wy * scale + panY
+            };
+        }
+
+        // --- 4. RENDER ENGINE ---
+        function draw() {
+            // Clear Screen
+            ctx.fillStyle = '#111'; // Model space bg
+            ctx.fillRect(0, 0, width, height);
+
+            // 1. Draw Grid
+            drawGrid();
+
+            // 2. Draw Origin (UCS Icon)
+            const origin = toScreen(0, 0);
+            ctx.lineWidth = 2;
+            
+            // X Axis (Red)
+            ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.lineTo(origin.x + 50, origin.y); 
+            ctx.strokeStyle = '#ff4444'; ctx.stroke();
+            
+            // Y Axis (Green) - HTML Canvas Y is down, usually CAD Y is up. We'll stick to Canvas Y for simplicity.
+            ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.lineTo(origin.x, origin.y + 50); 
+            ctx.strokeStyle = '#44ff44'; ctx.stroke();
+
+            // 3. Draw Entities
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = THEME.entity;
+            
+            entities.forEach(ent => drawEntity(ent));
+
+            // 4. Draw Preview (if drawing)
+            if (isDrawing && startPoint) {
+                ctx.strokeStyle = THEME.preview;
+                ctx.setLineDash([5, 5]); // Dashed line for preview
+                
+                let previewEnt;
+                if (currentTool === 'line') {
+                    previewEnt = { type: 'line', x1: startPoint.x, y1: startPoint.y, x2: mouseWorld.x, y2: mouseWorld.y };
+                } else if (currentTool === 'rect') {
+                    previewEnt = { type: 'rect', x: startPoint.x, y: startPoint.y, w: mouseWorld.x - startPoint.x, h: mouseWorld.y - startPoint.y };
+                } else if (currentTool === 'circle') {
+                    const r = Math.hypot(mouseWorld.x - startPoint.x, mouseWorld.y - startPoint.y);
+                    previewEnt = { type: 'circle', x: startPoint.x, y: startPoint.y, r: r };
+                }
+                
+                if (previewEnt) drawEntity(previewEnt);
+                ctx.setLineDash([]); // Reset dash
+            }
+        }
+
+        function drawEntity(ent) {
+            ctx.beginPath();
+            if (ent.type === 'line') {
+                const p1 = toScreen(ent.x1, ent.y1);
+                const p2 = toScreen(ent.x2, ent.y2);
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+            } else if (ent.type === 'rect') {
+                const p = toScreen(ent.x, ent.y);
+                ctx.rect(p.x, p.y, ent.w * scale, ent.h * scale);
+            } else if (ent.type === 'circle') {
+                const p = toScreen(ent.x, ent.y);
+                ctx.arc(p.x, p.y, ent.r * scale, 0, Math.PI * 2);
+            }
+            ctx.stroke();
+        }
+
+        function drawGrid() {
+            // Calculate grid spacing based on scale to keep it usable
+            let step = 50;
+            if (scale > 2) step = 10;
+            if (scale < 0.5) step = 100;
+            if (scale < 0.1) step = 500;
+
+            const startX = Math.floor((-panX / scale) / step) * step;
+            const endX = Math.floor(((width - panX) / scale) / step) * step + step;
+            const startY = Math.floor((-panY / scale) / step) * step;
+            const endY = Math.floor(((height - panY) / scale) / step) * step + step;
+
+            ctx.lineWidth = 0.5;
+
+            for (let x = startX; x <= endX; x += step) {
+                const sx = x * scale + panX;
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx, height);
+                ctx.strokeStyle = (x === 0) ? '#666' : THEME.gridMinor;
+                ctx.stroke();
+            }
+
+            for (let y = startY; y <= endY; y += step) {
+                const sy = y * scale + panY;
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.strokeStyle = (y === 0) ? '#666' : THEME.gridMinor;
+                ctx.stroke();
+            }
+        }
+
+        // --- 5. LOGIC & INTERACTION ---
+
+        function setTool(tool) {
+            currentTool = tool;
+            isDrawing = false;
+            startPoint = null;
+            log(`Tool: ${tool.toUpperCase()}`);
+            
+            // Update UI
+            document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active-tool'));
+            const btn = document.getElementById(`btn-${tool}`);
+            if(btn) btn.classList.add('active-tool');
+
+            // Toggle cursor
+            canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair';
+            vHair.style.display = tool === 'select' ? 'none' : 'block';
+            hHair.style.display = tool === 'select' ? 'none' : 'block';
+        }
+
+        function log(msg) {
+            const div = document.createElement('div');
+            div.textContent = `> ${msg}`;
+            cmdHistory.appendChild(div);
+            cmdHistory.scrollTop = cmdHistory.scrollHeight;
+        }
+
+        function clearCanvas() {
+            entities = [];
+            log('Canvas Cleared.');
+            draw();
+        }
+
+        // Mouse Events
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSensitivity = 0.1;
+            const delta = -Math.sign(e.deltaY) * zoomSensitivity;
+            const zoomFactor = 1 + delta;
+
+            const wx = (e.offsetX - panX) / scale;
+            const wy = (e.offsetY - panY) / scale;
+
+            scale *= zoomFactor;
+            // Limit Zoom
+            scale = Math.max(0.1, Math.min(scale, 10));
+
+            // Zoom towards mouse
+            panX = e.offsetX - wx * scale;
+            panY = e.offsetY - wy * scale;
+
+            draw();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            
+            // Right Click or Middle Click = PAN
+            if (e.button === 2 || e.button === 1) {
+                isPanning = true;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Left Click = Draw
+            if (e.button === 0 && currentTool !== 'select') {
+                if (!isDrawing) {
+                    // Start Drawing
+                    isDrawing = true;
+                    startPoint = { ...mouseWorld };
+                    log(`Specify next point or dimension...`);
+                } else {
+                    // Finish Drawing
+                    let newEnt;
+                    if (currentTool === 'line') {
+                        newEnt = { type: 'line', x1: startPoint.x, y1: startPoint.y, x2: mouseWorld.x, y2: mouseWorld.y };
+                    } else if (currentTool === 'rect') {
+                        newEnt = { type: 'rect', x: startPoint.x, y: startPoint.y, w: mouseWorld.x - startPoint.x, h: mouseWorld.y - startPoint.y };
+                    } else if (currentTool === 'circle') {
+                        const r = Math.hypot(mouseWorld.x - startPoint.x, mouseWorld.y - startPoint.y);
+                        newEnt = { type: 'circle', x: startPoint.x, y: startPoint.y, r: r };
+                    }
+
+                    if (newEnt) {
+                        entities.push(newEnt);
+                        log(`${currentTool.toUpperCase()} created.`);
+                    }
+                    
+                    isDrawing = false;
+                    startPoint = null;
+                    draw();
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            // Update Mouse Coordinates
+            const rect = canvas.getBoundingClientRect();
+            mouseScreen.x = e.clientX - rect.left;
+            mouseScreen.y = e.clientY - rect.top;
+            mouseWorld = toWorld(mouseScreen.x, mouseScreen.y);
+
+            // Update UI Coords
+            coordsDisplay.textContent = `${mouseWorld.x.toFixed(2)}, ${mouseWorld.y.toFixed(2)}, 0.00`;
+
+            // Crosshair update
+            vHair.style.left = mouseScreen.x + 'px';
+            hHair.style.top = mouseScreen.y + 'px';
+
+            // Pan Logic
+            if (isPanning) {
+                panX += e.movementX;
+                panY += e.movementY;
+                draw();
+            }
+
+            // Redraw for preview
+            if (isDrawing) {
+                draw();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+            if(currentTool === 'select') canvas.style.cursor = 'default';
+            else canvas.style.cursor = 'crosshair';
+        });
+
+        // Prevent Context Menu
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Keyboard Shortcuts
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement === cmdInput) {
+                if(e.key === 'Enter') {
+                    processCommand(cmdInput.value);
+                    cmdInput.value = '';
+                }
+                return;
+            }
+
+            switch(e.key.toLowerCase()) {
+                case 'l': setTool('line'); break;
+                case 'c': setTool('circle'); break;
+                case 'r': setTool('rect'); break;
+                case 'escape': 
+                    isDrawing = false; 
+                    startPoint = null; 
+                    setTool('select'); 
+                    log('Cancel');
+                    draw();
+                    break;
+            }
+        });
+
+        function processCommand(cmd) {
+            const c = cmd.trim().toLowerCase();
+            log(`COMMAND: ${c}`);
+            if(c === 'l' || c === 'line') setTool('line');
+            else if(c === 'c' || c === 'circle') setTool('circle');
+            else if(c === 'r' || c === 'rect' || c === 'rectangle') setTool('rect');
+            else if(c === 'clear') clearCanvas();
+            else log('Unknown command.');
+        }
+
+        // --- 6. INITIALIZATION ---
+        resize();
+        // Center the view initially
+        panX = width / 2;
+        panY = height / 2;
+        draw();
+
+    </script>
+</body>
+</html>
