@@ -81,7 +81,7 @@ pydantic_core==2.33.2
 Pygments==2.19.2
 PyJWT==2.10.1
 pyparsing==3.2.4
-pypiwin32==223
+
 pypng==0.20220715.0
 
 Pyrebase4==4.8.0
@@ -128,3 +128,4 @@ whitenoise==6.11.0
 WTForms==3.2.1
 
  gunicorn==24.1.0
+
